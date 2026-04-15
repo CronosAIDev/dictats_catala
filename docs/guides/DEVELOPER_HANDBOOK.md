@@ -101,7 +101,7 @@ Cada HTML té les seves vistes inline (`div.view` o `div.mobile-view`) perquè l
 - Rama de producción: `main`
 
 ### VM de deploy
-- **VM**: `mochi-vm` (54.38.41.250)
+- **VM**: `mochi-vm` (34.52.166.136)
 - **Usuari SSH**: `otc`
 - **Ruta a la VM**: `/home/otc/apps/dictats_catala`
 - **Procés PM2**: `dictats-catala`
