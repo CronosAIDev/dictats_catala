@@ -101,35 +101,58 @@ Cada HTML té les seves vistes inline (`div.view` o `div.mobile-view`) perquè l
 - Rama de producción: `main`
 
 ### VM de deploy
-- **VM**: `mochi-vm` (34.52.166.136, GCP e2-medium, europe-west1-b)
-- **Usuari SSH**: `otc`
-- **Ruta a la VM**: `/home/otc/apps/dictats_catala`
+- **VM**: `kairos-vm` (34.156.75.104, GCP e2-small, europe-west1-b)
+- **Projecte GCP**: `kairos-family-app` (compte `oscar@prioritygate.com`)
+- **Usuari SSH**: `oscar`
+- **Ruta a la VM**: `/var/dictats/app`
 - **Procés PM2**: `dictats-catala`
 - **Port**: `3003`
-- **Proxy**: Caddy — `dictation.generaive.io` → `localhost:3003`
+- **Proxy**: nginx + certbot — `dictation.generaive.io` → `127.0.0.1:3003`
+
+Compartida amb `kairos_app` (3010) i `heart_monitor`/`trabaler` (3020). Node 20 a
+tota la VM. Abans del 2026-07-29 vivia a `mochi-vm` amb Caddy; veure el
+changelog del trasllat.
+
+Accés:
+```bash
+gcloud compute ssh kairos-vm --zone=europe-west1-b --project=kairos-family-app
+```
 
 ### Procés de deploy
 1. Validar en localhost
 2. Confirmar al dev / IA que tot OK
 3. IA fa push a `main`
-4. IA executa a la VM:
+4. IA executa des de local:
    ```bash
-   cd ~/apps/dictats_catala && git pull && npm ci && pm2 restart dictats-catala
+   bash scripts/deploy/deploy-dictats.sh
    ```
+   (fa `git pull --ff-only` + `npm ci --omit=dev` + `npm rebuild better-sqlite3`
+   + `pm2 restart dictats-catala` + `pm2 save` a la VM)
 5. IA envia notificació Telegram al canal Trawlingweb DEV Force
 
 ### Fitxers a la VM (fora del repo)
 | Fitxer | Ruta | Contingut |
 |--------|------|-----------|
-| `.env` | `~/apps/dictats_catala/.env` | Credencials producció |
-| `dictats.db` | `~/apps/dictats_catala/data/dictats.db` | SQLite (generat automàticament) |
+| `.env` | `/var/dictats/app/.env` | Credencials producció (chmod 600) |
+| `dictats.db` | `/var/dictats/data/dictats.db` | SQLite — **fora de l'arbre del repo** |
+| logs | `/var/dictats/logs/{out,err}.log` | Sortida PM2 |
 
-### Caddy config (referència)
+La BD viu fora de `/var/dictats/app` via `DICTATS_DB_PATH` perquè els deploys per
+`git pull` no la puguin tocar.
+
+### nginx config (referència)
+Fitxer al repo: `nginx/dictats.conf` → `/etc/nginx/sites-available/dictats.conf`.
+
+```bash
+sudo cp /var/dictats/app/nginx/dictats.conf /etc/nginx/sites-available/dictats.conf
+sudo ln -sf /etc/nginx/sites-available/dictats.conf /etc/nginx/sites-enabled/
+sudo nginx -t && sudo systemctl reload nginx
+sudo certbot --nginx -d dictation.generaive.io   # renovació automàtica cada 90 dies
 ```
-dictation.generaive.io {
-    reverse_proxy localhost:3003
-}
-```
+
+### DNS
+`generaive.io` està a **GoDaddy** (ns03/ns04.domaincontrol.com), no a Cloud DNS.
+El registre A `dictation` ha d'apuntar a `34.156.75.104`.
 
 ## Manteniment
 

@@ -1,5 +1,16 @@
 # Changelog — dictats_catala
 
+## [1.1.0] — 2026-07-29 — Traslado de mochi-vm a kairos-vm
+
+### Mejorado
+- La app pasa de `mochi-vm` (`/home/otc/apps/dictats_catala`, Caddy) a `kairos-vm` (`/var/dictats/app`, nginx + certbot), la misma VM que `kairos_app` y `heart_monitor`. Motivo: consolidar apps de bajo uso y liberar mochi-vm.
+- La BD SQLite vive ahora en `/var/dictats/data/dictats.db`, fuera del árbol del repo, vía la nueva variable `DICTATS_DB_PATH`. Así los deploys por `git pull` no pueden tocarla.
+- Deploy repetible con `scripts/deploy/deploy-dictats.sh` (git pull + npm ci + pm2 restart), siguiendo el patrón de `kairos_app`.
+- `ecosystem.config.js` y `nginx/dictats.conf` versionados en el repo.
+- `.env.example` incluye las variables `MYSQL_*`, que faltaban pese a estar documentadas en el README.
+
+---
+
 ## [1.0.1] — 2026-04-07 — Fix crash better-sqlite3 tras actualización de Node.js
 
 ### Corregido

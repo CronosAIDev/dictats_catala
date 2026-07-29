@@ -72,10 +72,18 @@ public/
 ## Producció
 
 - **URL**: https://dictation.generaive.io
-- **VM**: mochi-vm (`54.38.41.250`)
-- **Ruta VM**: `/home/otc/apps/dictats_catala`
+- **VM**: `kairos-vm` (`34.156.75.104`, GCP projecte `kairos-family-app`, europe-west1-b)
+- **Ruta VM**: `/var/dictats/app` (BD a `/var/dictats/data`, logs a `/var/dictats/logs`)
 - **PM2**: `dictats-catala` (port 3003)
-- **Nginx**: proxy invers des de dictation.generaive.io → localhost:3003
+- **Nginx**: proxy invers des de dictation.generaive.io → 127.0.0.1:3003
+
+Comparteix VM amb `kairos_app` (port 3010) i `heart_monitor`/`trabaler` (port 3020).
+
+### Deploy
+
+```bash
+bash scripts/deploy/deploy-dictats.sh   # git pull + npm ci + pm2 restart
+```
 
 ## Documentació
 
