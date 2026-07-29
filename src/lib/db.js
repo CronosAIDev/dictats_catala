@@ -2,7 +2,10 @@ const Database = require('better-sqlite3');
 const path = require('path');
 const fs = require('fs');
 
-const DB_PATH = path.join(__dirname, '../../data/dictats.db');
+// En producció la BD viu fora de l'arbre del repo (/var/dictats/data) perquè
+// els deploys per `git pull` no la toquin.
+const DB_PATH = process.env.DICTATS_DB_PATH
+  || path.join(__dirname, '../../data/dictats.db');
 
 const dataDir = path.dirname(DB_PATH);
 if (!fs.existsSync(dataDir)) {
