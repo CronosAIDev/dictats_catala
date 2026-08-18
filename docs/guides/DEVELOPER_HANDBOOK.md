@@ -172,7 +172,7 @@ Detall complet i rationale: [`wiki/docs/acceso_vms_google_gcloud.md`](../../../w
 |--------|------|-----------|
 | `.env` | `/var/dictats/app/.env` | Credencials producció (chmod 600) |
 | `dictats.db` | `/var/dictats/data/dictats.db` | SQLite — **fora de l'arbre del repo** |
-| logs | `/var/dictats/logs/{out,err}.log` | Sortida PM2 |
+| logs | `/var/dictats/logs/{out,err}-3.log` | Sortida PM2 (el `-3` és l'id del procés) |
 
 La BD viu fora de `/var/dictats/app` via `DICTATS_DB_PATH` perquè els deploys per
 `git pull` no la puguin tocar.
