@@ -180,3 +180,21 @@ pm2 restart dictats-catala
 - CHANGELOG: `CHANGELOG.md`
 - Seguretat: `docs/shell/SECURITY_PROTOCOL.md`
 - FeedScale Console (auth compartida): `feedscale_console_app/docs/guides/DEVELOPER_HANDBOOK.md`
+
+---
+
+## Coordinacion cross-repo (OBLIGATORIO)
+
+Todo gameplan que toque **mas de un repo o mas de un dev** se coordina por GitHub, no por
+Telegram ni copy/paste entre terminales:
+
+- **La conversacion**: una Issue en `trawlingweb/wiki`. El *assignee* dice quien debe actuar;
+  al responder se reasigna en el mismo paso. Un Claude trabaja SOLO sus sub-issues.
+- **El tablero**: un Project propio por gameplan, copiado de la plantilla #8
+  (`Pendiente / En curso / Bloqueado / Hecho`). Activos: https://github.com/orgs/trawlingweb/projects
+- **Comandos**: `/gameplan` para crearlo, `/sync` para ver si tengo trabajo pendiente.
+
+Doctrina: `wiki/docs/coordinacion_cross_repo.md` — protocolo completo:
+`wiki/AI_CODE_INSTRUCTIONS.md` §32.
+
+<!-- AI_CODE_INSTRUCTIONS-sync: 2026-08-18 -->
