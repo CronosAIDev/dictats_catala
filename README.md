@@ -85,6 +85,11 @@ Comparteix VM amb `kairos_app` (port 3010) i `heart_monitor`/`trabaler` (port 30
 bash scripts/deploy/deploy-dictats.sh   # git pull + npm ci + pm2 restart
 ```
 
+Requereix tenir activada la service account nominal (`gcloud auth
+activate-service-account --key-file=~/.ssh/otc-dev.json`) — el compte personal
+caduca i trenca els deploys no interactius. Veure
+[Developer Handbook § Credencial d'accés](./docs/guides/DEVELOPER_HANDBOOK.md#credencial-dacc%C3%A9s-llegir-abans-de-desplegar).
+
 ## Documentació
 
 - [CHANGELOG](./CHANGELOG.md)
