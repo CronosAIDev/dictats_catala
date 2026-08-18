@@ -97,8 +97,12 @@ Cada HTML té les seves vistes inline (`div.view` o `div.mobile-view`) perquè l
 ## Despliegue
 
 ### Rama activa
-- Rama de desarrollo: `main`
+- Rama de desarrollo: `vN` (branch de versió incremental — mirar `git branch -r` per saber el següent número)
 - Rama de producción: `main`
+
+Flux obligatori (`wiki/AI_CODE_INSTRUCTIONS.md` §9.6): branch `vN` des de `main` →
+commits → push de la branch → merge `--no-ff` a `main` → push → deploy des de `main`.
+**Mai es despleguen branches de versió, i mai s'esborren** (són el punt de rollback).
 
 ### VM de deploy
 - **VM**: `kairos-vm` (34.156.75.104, GCP e2-small, europe-west1-b)
@@ -113,10 +117,43 @@ Compartida amb `kairos_app` (3010) i `heart_monitor`/`trabaler` (3020). Node 20 
 tota la VM. Abans del 2026-07-29 vivia a `mochi-vm` amb Caddy; veure el
 changelog del trasllat.
 
-Accés:
+### Credencial d'accés (llegir abans de desplegar)
+
+El deploy s'autentica amb una **service account nominal**, no amb el compte personal:
+
 ```bash
-gcloud compute ssh kairos-vm --zone=europe-west1-b --project=kairos-family-app
+GCLOUD="$HOME/AppData/Local/Google/Cloud SDK/google-cloud-sdk/bin/gcloud"
+
+# Una sola vegada per màquina — persisteix entre sessions
+"$GCLOUD" auth activate-service-account --key-file="$HOME/.ssh/otc-dev.json"
+
+# Accés
+"$GCLOUD" compute ssh kairos-vm --zone=europe-west1-b --project=kairos-family-app \
+  --account=otc-dev@kairos-family-app.iam.gserviceaccount.com --command hostname
 ```
+
+Dues coses que costen hores si no es saben:
+
+- **Compte personal ≠ credencial de deploy.** `oscar@prioritygate.com` funciona en
+  interactiu, però caduca per la política de sessió de Workspace i en mode no
+  interactiu (Claude Code, scripts, CI) mor amb
+  `Reauthentication failed. cannot prompt during non-interactive execution`.
+  Les service accounts estan **exemptes** d'aquesta política: no reautentiquen mai.
+  Per això el deploy passa `--account` explícit i no es refia del compte actiu.
+- **`kairos-vm` NO necessita `--tunnel-through-iap`.** Té IP pública i el port 22
+  obert, i gcloud només activa IAP sol quan la VM no té IP externa. El flag és
+  obligatori a `mochi-vm` i `crawlers-vm` (projecte `dataagencies`), que sí el tenen
+  tancat — no el copiïs aquí ni el treguis allà.
+
+> 🔐 La clau `~/.ssh/otc-dev.json` és un secret de llarga durada: viu fora del repo,
+> no es passa per Telegram ni email, i **no es comparteix**. Si un altre dev no pot
+> desplegar, se li crea la **seva** SA nominal (`<nom>-dev@kairos-family-app`) amb els
+> rols `roles/compute.osLogin`/`compute.instanceAdmin.v1` + `iam.serviceAccountUser`
+> sobre la SA de la VM — mai se li passa aquesta.
+
+Detall complet i rationale: [`wiki/docs/acceso_vms_google_gcloud.md`](../../../wiki/docs/acceso_vms_google_gcloud.md)
+§5.1 (SA nominal per dev) i §5.4 (per què no es reparteix cap clau), i
+`wiki/AI_CODE_INSTRUCTIONS.md` §9.6.
 
 ### Procés de deploy
 1. Validar en localhost
@@ -155,6 +192,16 @@ sudo certbot --nginx -d dictation.generaive.io   # renovació automàtica cada 9
 El registre A `dictation` ha d'apuntar a `34.156.75.104`.
 
 ## Manteniment
+
+### Problemes freqüents de deploy
+
+| Símptoma | Causa | Solució |
+|----------|-------|---------|
+| `Reauthentication failed. cannot prompt during non-interactive execution` | S'està usant un compte personal caducat en lloc de la SA | `gcloud auth activate-service-account --key-file=~/.ssh/otc-dev.json` i passar `--account` |
+| `Reauthentication required. Please enter your password:` | El mateix, però en terminal interactiu | Igual — no tecleïs la contrasenya, activa la SA |
+| `Connection timed out` en un altre repo cap a `mochi-vm`/`crawlers-vm` | Allà falta `--tunnel-through-iap` | És d'aquelles VMs, no d'aquesta. Veure wiki §5 |
+| Deploy OK però una variable nova del `.env` arriba com a `undefined` | `pm2 restart` sense `--update-env` | El script ja el porta; no el treguis (`AI_CODE_INSTRUCTIONS.md` §18.4) |
+| `ERR_DLOPEN_FAILED: libnode.so.XXX` | `better-sqlite3` compilat contra una altra versió de Node | Veure secció següent |
 
 ### better-sqlite3 i actualitzacions de Node.js
 

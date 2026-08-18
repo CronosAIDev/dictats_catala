@@ -1,5 +1,15 @@
 # Changelog — dictats_catala
 
+## [1.1.1] — 2026-08-18 — Credencial de deploy: service account nominal
+
+### Mejorado
+- El deploy se autentica con la service account nominal `otc-dev@kairos-family-app.iam.gserviceaccount.com` (clave en `~/.ssh/otc-dev.json`) en lugar de la cuenta personal, que caduca por la política de sesión de Workspace y rompe los deploys no interactivos con `Reauthentication failed. cannot prompt during non-interactive execution`.
+- `scripts/deploy/deploy-dictats.sh` pasa `--account` explícito (variable `ACCOUNT`) en vez de confiar en la cuenta gcloud activa.
+- `DEVELOPER_HANDBOOK.md`: nuevo apartado "Credencial d'accés", tabla de problemas frecuentes de deploy, y nota de que `kairos-vm` **no** usa `--tunnel-through-iap` (a diferencia de `mochi-vm` y `crawlers-vm`).
+- Documentado el flujo de branches `vN` de `AI_CODE_INSTRUCTIONS.md` §9.6, que el handbook contradecía.
+
+---
+
 ## [1.1.0] — 2026-07-29 — Traslado de mochi-vm a kairos-vm
 
 ### Mejorado
