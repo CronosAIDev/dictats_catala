@@ -21,3 +21,6 @@
 | F10 | PWA / installable | Hacer la app instalable en móvil | Pendiente | Media |
 | F11 | Más textos | Ampliar banco de textos por nivel | Pendiente | Alta |
 | F12 | Estadísticas avanzadas | Gráficos de progreso por nivel y semana | Pendiente | Baja |
+| F13 | Revisar `npm audit` | 7 vulnerabilidades reportadas (1 baja, 3 moderadas, 3 altas) en dependencias transitivas, sin revisar en detalle. Ver `docs/shell/SECURITY_PROTOCOL.md` | Pendiente | Media |
+| F14 | Rate limit en `/api/correct` y `/api/correct-image` | Solo protegidos por `requireAuth`; sin límite de llamadas a la API de Anthropic (coste, no seguridad de datos) | Pendiente | Baja |
+| F15 | Rotación de logs PM2 | `/var/dictats/logs/{out,err}-3.log` sin rotación configurada | Pendiente | Baja |

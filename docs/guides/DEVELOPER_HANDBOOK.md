@@ -84,6 +84,8 @@ L'app té 3 HTML separats (no monolítica):
 
 Cada HTML té les seves vistes inline (`div.view` o `div.mobile-view`) perquè l'app és petita (3 vistes per pàgina com a màxim). Si creix a >5 vistes per pàgina, migrar a partials seguint la norma de la wiki.
 
+Documentació per secció (dictat/mobile/perfil): `docs/sections/`.
+
 ## Convencions
 
 - Tots els missatges d'error al frontend en **català**
