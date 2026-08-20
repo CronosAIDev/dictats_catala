@@ -27,7 +27,7 @@ Forma part de l'ecosistema Trawlingweb. Usa la mateixa autenticació que FeedSca
 
 ### Instal·lació
 ```bash
-git clone https://github.com/OTRABAZOS/dictats_catala.git
+git clone https://github.com/CronosAIDev/dictats_catala.git
 cd dictats_catala
 npm install
 cp .env.example .env
