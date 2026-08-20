@@ -27,7 +27,7 @@ sudo mkdir -p /var/dictats/{app,data,logs}
 sudo chown -R "$USER":"$USER" /var/dictats
 
 if [ ! -d /var/dictats/app/.git ]; then
-    git clone https://github.com/OTRABAZOS/dictats_catala.git /var/dictats/app
+    git clone https://github.com/CronosAIDev/dictats_catala.git /var/dictats/app
 fi
 
 if [ -f /var/dictats/app/nginx/dictats.conf ]; then

@@ -9,15 +9,15 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/OTRABAZOS/dictats_catala.git"
+    "url": "git+https://github.com/CronosAIDev/dictats_catala.git"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/OTRABAZOS/dictats_catala/issues"
+    "url": "https://github.com/CronosAIDev/dictats_catala/issues"
   },
-  "homepage": "https://github.com/OTRABAZOS/dictats_catala#readme",
+  "homepage": "https://github.com/CronosAIDev/dictats_catala#readme",
   "dependencies": {
     "@anthropic-ai/sdk": "^0.80.0",
     "bcrypt": "^6.0.0",
