@@ -100,7 +100,7 @@ Cada HTML té les seves vistes inline (`div.view` o `div.mobile-view`) perquè l
 - Rama de desarrollo: `vN` (branch de versió incremental — mirar `git branch -r` per saber el següent número)
 - Rama de producción: `main`
 
-Flux obligatori (`wiki/AI_CODE_INSTRUCTIONS.md` §9.6): branch `vN` des de `main` →
+Flux obligatori (`wiki-cronos/AI_CODE_INSTRUCTIONS.md` §9.6): branch `vN` des de `main` →
 commits → push de la branch → merge `--no-ff` a `main` → push → deploy des de `main`.
 **Mai es despleguen branches de versió, i mai s'esborren** (són el punt de rollback).
 
@@ -151,9 +151,10 @@ Dues coses que costen hores si no es saben:
 > rols `roles/compute.osLogin`/`compute.instanceAdmin.v1` + `iam.serviceAccountUser`
 > sobre la SA de la VM — mai se li passa aquesta.
 
-Detall complet i rationale: [`wiki/docs/acceso_vms_google_gcloud.md`](../../../wiki/docs/acceso_vms_google_gcloud.md)
-§5.1 (SA nominal per dev) i §5.4 (per què no es reparteix cap clau), i
-`wiki/AI_CODE_INSTRUCTIONS.md` §9.6.
+Detall complet i rationale: `wiki-cronos/docs/acceso_kairos_vm.md`
+(`C:\Users\oscar\Dev\Cronos\wiki-cronos\docs\acceso_kairos_vm.md`) — mètode d'accés a
+`kairos-vm` propi de Cronos. **No enllaçar a la wiki de Trawlingweb**: aquest repo és
+personal (§33) i aquella wiki és de sol lectura, no s'hi referencia com a font pròpia.
 
 ### Procés de deploy
 1. Validar en localhost
@@ -222,26 +223,68 @@ pm2 restart dictats-catala
 - **Lenguaje principal**: Node.js
 
 ## Documentació Relacionada
-- Wiki: (pendent de crear doc específic a `wiki/docs/dictats_catala.md`)
+- Wiki (Cronos, propia): `wiki-cronos/docs/dictats_catala.md` i `wiki-cronos/docs/acceso_kairos_vm.md`
+  (`C:\Users\oscar\Dev\Cronos\wiki-cronos\docs\`)
 - ROADMAP: `docs/project/ROADMAP.md`
 - CHANGELOG: `CHANGELOG.md`
 - Seguretat: `docs/shell/SECURITY_PROTOCOL.md`
 - FeedScale Console (auth compartida): `feedscale_console_app/docs/guides/DEVELOPER_HANDBOOK.md`
+  (repo de Trawlingweb — es llegeix per entendre l'esquema `BrandWaiUserProfile`, no s'hi escriu res)
 
 ---
 
-## Coordinacion cross-repo (OBLIGATORIO)
+## Coordinació amb altres devs (OBLIGATORIO)
 
-Todo gameplan que toque **mas de un repo o mas de un dev** se coordina por GitHub, no por
-Telegram ni copy/paste entre terminales:
+**Centre de comandament**: `CronosAIDev/wiki-cronos`
+**Organització dels Projects**: `CronosAIDev`
+**Plantilla de Project**: #2
 
-- **La conversacion**: una Issue en `trawlingweb/wiki`. El *assignee* dice quien debe actuar;
-  al responder se reasigna en el mismo paso. Un Claude trabaja SOLO sus sub-issues.
-- **El tablero**: un Project propio por gameplan, copiado de la plantilla #8
-  (`Pendiente / En curso / Bloqueado / Hecho`). Activos: https://github.com/orgs/trawlingweb/projects
-- **Comandos**: `/gameplan` para crearlo, `/sync` para ver si tengo trabajo pendiente.
+> Aquestes tres línies diuen a quin món pertany aquest repo (§32.11 de `wiki-cronos`).
+> No les esborris: sense elles `/sync` para i pregunta.
 
-Doctrina: `wiki/docs/coordinacion_cross_repo.md` — protocolo completo:
-`wiki/AI_CODE_INSTRUCTIONS.md` §32.
+### On viu cada cosa
 
-<!-- AI_CODE_INSTRUCTIONS-sync: 2026-08-18 -->
+- **Les tasques i la conversa**: Issues al **centre de comandament** d'amunt. SEMPRE
+  allà, **mai** en aquest repo — una sola safata per a tothom.
+- **El tauler**: un Project propi per gameplan, a l'organització.
+- **El pla escrit**: el `GP_*.md`, al repo que el posseeix. Es llegeix per la seva
+  URL raw amb `curl`; **mai clonar el repo d'un altre dev**.
+
+### Requisit, una sola vegada per màquina
+
+```bash
+gh auth refresh -s project
+```
+
+### En començar a treballar
+
+1. `git pull` al repo `wiki-cronos`: el protocol viu allà i canvia.
+2. `/sync <numero-de-Project>` → les Issues d'**aquest gameplan** assignades a tu.
+3. Deixa't vigilant: `/loop 10m /sync <numero-de-Project>`.
+
+### En respondre — reassignar és OBLIGATORI
+
+```bash
+gh issue comment <N> --repo CronosAIDev/wiki-cronos --body-file resposta.md
+gh issue edit <N> --repo CronosAIDev/wiki-cronos --remove-assignee @me --add-assignee <qui-segueix>
+```
+
+Doctrina completa i els altres finals (bloquejat / tancat / gameplan sencer):
+`wiki-cronos/AI_CODE_INSTRUCTIONS.md` §32.
+
+### I l'altra wiki: la de Trawlingweb només es LLEGEIX
+
+Aquest repo **no pertany a l'organització `trawlingweb`** (és personal, traslladat de
+`OTRABAZOS` a `CronosAIDev` el 2026-08-20). D'aquella wiki es cull el mètode de treball
+—deploy, accés a VMs, patrons de codi, convencions de git— i s'aplica. El que **mai** es
+fa:
+
+- No s'escriu cap fitxer a `trawlingweb/wiki` (ni `docs/`, ni `changelogs/`, ni `README.md`).
+- No s'obren Issues allà ni s'usen els seus Projects, plantilles o labels.
+- No es documenta res d'aquest projecte al coneixement general de Trawlingweb.
+
+Si es detecta que aquesta wiki està equivocada, es diu a Óscar i decideix ell. Vegeu
+`wiki-cronos/AI_CODE_INSTRUCTIONS.md` §33 — un incidente real (19-08-2026) d'aplicar
+normes de Trawlingweb sense preguntar de qui era el repo és el motiu d'aquest avís.
+
+<!-- AI_CODE_INSTRUCTIONS-sync: 2026-08-20 -->
