@@ -1,5 +1,12 @@
 # Changelog — dictats_catala
 
+## [1.1.2] — 2026-08-21 — Las rutas de API devolvían un redirect en lugar de un 401
+
+### Corregido
+- `requireAuth` comprobaba `req.path.startsWith('/api/')`, pero `req.path` no incluye el prefijo del router donde está montado el middleware: dentro de `app.use('/api', ...)` una petición a `/api/texts/basic` tiene `req.path === '/texts/basic'`. La condición no se cumplía nunca y **todas** las rutas de API sin sesión respondían con el `302` de navegación. Al caducar la sesión, el `fetch` del frontend seguía el redirect, recibía el HTML del login y reventaba en `res.json()` con un error de parseo en vez de volver al login. La comprobación pasa a `req.originalUrl`, que conserva la ruta completa.
+
+---
+
 ## [1.1.1] — 2026-08-18 — Credencial de deploy: service account nominal
 
 ### Mejorado
