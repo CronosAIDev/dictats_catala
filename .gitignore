@@ -3,3 +3,17 @@ data/dictats.db
 .env
 *.db-shm
 *.db-wal
+
+# Credenciales — NUNCA al repo (wiki: acceso_kairos_vm.md, AI_CODE_INSTRUCTIONS §9.6c)
+# La service account nominal vive fuera del arbol del repo, en ~/Documentos o ~/.ssh
+*.json.key
+*-dev.json
+*-sa.json
+service-account*.json
+gcp-*.json
+credentials*.json
+*.pem
+*.p12
+
+# Config del editor (VS Code workspace)
+*.code-workspace
