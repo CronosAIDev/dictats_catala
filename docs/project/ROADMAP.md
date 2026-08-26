@@ -15,6 +15,7 @@
 | F9 | Deploy en mochi-vm (dictation.generaive.io) | v1.0.0 | 2026-03-22 |
 | F13 | Revisar `npm audit` — 7 vulnerabilidades a 0 | v5 | 2026-08-26 |
 | F11 | Más textos — banco de 15 a 30 (10 por nivel) | v5 | 2026-08-26 |
+| F10 | PWA instalable (manifest + service worker + iconos) | v5 | 2026-08-26 |
 
 ## En Curso
 
@@ -26,7 +27,6 @@
 
 | ID | Feature | Descripción | Estado | Prioridad |
 |----|---------|-------------|--------|-----------|
-| F10 | PWA / installable | Hacer la app instalable en móvil | Pendiente | Media |
 | F12 | Estadísticas avanzadas | Gráficos de progreso por nivel y semana | Pendiente | Baja |
 | F14 | Rate limit en `/api/correct` y `/api/correct-image` | Solo protegidos por `requireAuth`; sin límite de llamadas a la API de Anthropic (coste, no seguridad de datos) | Pendiente | Baja |
 | F15 | Rotación de logs PM2 | `/var/dictats/logs/{out,err}-3.log` sin rotación configurada | Pendiente | Baja |
