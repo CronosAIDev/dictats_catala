@@ -19,7 +19,7 @@
   },
   "homepage": "https://github.com/CronosAIDev/dictats_catala#readme",
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.80.0",
+    "@anthropic-ai/sdk": "^0.120.0",
     "bcrypt": "^6.0.0",
     "better-sqlite3": "^12.8.0",
     "dotenv": "^17.3.1",
