@@ -1,11 +1,12 @@
 {
   "name": "dictats_catala",
-  "version": "1.1.2",
+  "version": "1.2.0",
   "description": "Dictats en catala",
   "main": "index.js",
   "scripts": {
     "start": "node src/index.js",
-    "dev": "node --watch src/index.js"
+    "dev": "node --watch src/index.js",
+    "test": "node test/diff.test.js && node test/rang.test.js && node test/dictat.test.js"
   },
   "repository": {
     "type": "git",

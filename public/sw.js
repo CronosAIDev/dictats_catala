@@ -16,11 +16,12 @@
 // que sigui instal·lable i per estalviar descàrregues d'estàtics, no per oferir
 // un mode fora de línia que no podria complir.
 
-const CACHE = 'dictats-estatics-v1';
+const CACHE = 'dictats-estatics-v2';
 
 const ESTATICS = [
   '/style.css',
   '/app.js',
+  '/dictat.js',
   '/pwa.js',
   '/icons/icon-192.png',
   '/icons/icon-512.png',
@@ -77,6 +78,10 @@ self.addEventListener('fetch', (event) => {
           return resposta;
         })
         .catch(() => guardat);
+      // Sense això el navegador pot matar el service worker just després de
+      // servir la còpia guardada, abans que el `cache.put` acabi: la
+      // revalidació no arribaria mai i es quedaria servint un fitxer vell.
+      event.waitUntil(xarxa);
       return guardat || xarxa;
     })),
   );

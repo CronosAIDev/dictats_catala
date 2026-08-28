@@ -38,6 +38,25 @@
       </div>
 
       <div id="profile-content" style="display:none">
+        <!-- Rang -->
+        <div class="card" style="margin-bottom:20px">
+          <div class="card-body">
+            <div class="rank-now" style="margin-top:0">
+              <div>
+                <span class="rank-name" id="rank-name" style="font-size:1.375rem"></span>
+                <span class="rank-step" id="rank-step"></span>
+                <div class="rank-what" id="rank-what"></div>
+              </div>
+              <span class="rank-points" id="rank-points"></span>
+            </div>
+            <div class="rank-bar"><div class="rank-bar-fill" id="rank-bar"></div></div>
+            <div class="rank-next" id="rank-next"></div>
+          </div>
+          <div style="border-top:1px solid var(--border);padding:8px 0">
+            <div class="rank-ladder" id="rank-ladder"></div>
+          </div>
+        </div>
+
         <!-- Stats -->
         <div class="stats-grid" id="stats-grid"></div>
 
@@ -56,6 +75,12 @@
   </div>
 
   <script>
+    function escapeHtml(str) {
+      return String(str ?? '')
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    }
+
     async function init() {
       const res = await fetch('/api/profile');
       if (!res.ok) { window.location.href = '/login'; return; }
@@ -63,6 +88,33 @@
 
       document.getElementById('profile-loading').style.display = 'none';
       document.getElementById('profile-content').style.display = '';
+
+      // Rang: on ets en conjunt. L'escala d'aquí sota diu com va anar cada dictat.
+      const rank = data.rank;
+      document.getElementById('rank-name').textContent = rank.rang.nom;
+      document.getElementById('rank-step').textContent = `${rank.rang.nivell} de ${rank.rang.de}`;
+      document.getElementById('rank-what').textContent = rank.rang.que;
+      document.getElementById('rank-points').textContent = `${rank.punts} punts`;
+      if (rank.seguent) {
+        document.getElementById('rank-bar').style.width = Math.max(0, Math.min(100, rank.seguent.progres)) + '%';
+        document.getElementById('rank-next').textContent =
+          `Et falten ${rank.seguent.falten} punts per a ${rank.seguent.nom}.`;
+      } else {
+        document.getElementById('rank-bar').style.width = '100%';
+        document.getElementById('rank-next').textContent = 'Has coronat el castell. No hi ha res més amunt.';
+      }
+
+      // L'escala sencera, de baix a dalt com un castell de debò.
+      document.getElementById('rank-ladder').innerHTML = data.ranks.map(r => {
+        const actual = r.id === rank.rang.id;
+        const estat = actual ? 'actual' : (rank.punts >= r.punts ? 'assolit' : 'pendent');
+        return `
+          <div class="rank-rung ${estat}">
+            <span class="rung-nom">${escapeHtml(r.nom)}</span>
+            <span class="rung-que">${escapeHtml(r.que)}</span>
+            <span class="rung-punts">${r.punts}</span>
+          </div>`;
+      }).join('');
 
       // Stats
       const scaleForAvg = errCount => {
@@ -95,7 +147,7 @@
       // History list
       if (data.history.length === 0) {
         document.getElementById('history-list').innerHTML =
-          '<div style="padding:24px;color:var(--text-muted);font-size:.875rem">Encara no has fet cap dictado.</div>';
+          '<div style="padding:24px;color:var(--text-muted);font-size:.875rem">Encara no has fet cap dictat.</div>';
         return;
       }
 
@@ -104,8 +156,8 @@
       document.getElementById('history-list').innerHTML = data.history.map(r => `
         <div class="history-item">
           <div class="history-meta">
-            <span class="history-title">${r.text_title || r.text_id}</span>
-            <span class="history-level">${levelLabel[r.level] || r.level}</span>
+            <span class="history-title">${escapeHtml(r.text_title || r.text_id)}</span>
+            <span class="history-level">${escapeHtml(levelLabel[r.level] || r.level)}</span>
           </div>
           <div style="display:flex;align-items:center;gap:12px">
             <span class="scale-badge ${r.scale.cls}">${r.scale.label}</span>
