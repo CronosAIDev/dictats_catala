@@ -115,6 +115,8 @@ Aquí está la diferencia entre lo que la app es y lo que dice el objetivo.
 | F42 | Editar textos personales | Solo se pueden crear y borrar: una errata obliga a rehacer el texto entero. Y crearlos desde el móvil, que hoy no se puede | Pendiente | Baja |
 | F43 | Buscar y filtrar en la lista de textos | Son 30 y van a ser más | Pendiente | Baja |
 | F44 | La pantalla se apaga a mitad del dictado | En el móvil la síntesis de voz se corta al bloquearse la pantalla. Screen Wake Lock mientras dura el dictado | Pendiente | Media |
+| F49 | El botón «Sortir» de `/profile` no hace nada en una cuenta nueva | `init()` hace `return` cuando el historial está vacío, antes de registrar el listener de `btn-logout` (`public/profile.html`). Anterior a v6; se arregla moviendo el listener arriba | Pendiente | Media |
+| F50 | La barra del rango sale vacía cuando el margen te protege | Con 473 puntos y rango Manilles (umbral 500), el margen anti-yoyó mantiene el rango pero `progres` sale negativo y se dibuja al 0 %: se lee como si estuviera roto. Además desaprovecha la tensión — decir «estàs 27 punts per sota de Manilles» aprieta más que una barra muda | Pendiente | Media |
 
 ### Otros (anteriores a la revisión)
 
