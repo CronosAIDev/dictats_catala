@@ -1,7 +1,22 @@
 # GP · Dictats a Google Play
 
 > Data inici: 2026-08-29 · Dev: Gerard · Repo: `CronosAIDev/dictats_catala`
-> Project: CronosAIDev · Issues: `CronosAIDev/wiki-cronos`
+> Project: [#4](https://github.com/orgs/CronosAIDev/projects/4) · Issues: `CronosAIDev/wiki-cronos`
+
+## ⚠️ Si en Gerard ja tenia un gameplan o un Project propi
+
+Això es va escriure el **29-08-2026** després de comprovar que **no hi havia res publicat**:
+ni en aquest repo, ni a `wiki-cronos`, ni als repos personals d'en Gerard, que no té cap
+commit a l'organització des d'octubre de 2025.
+
+Si en fer el primer commit resulta que **sí que en tenia un** —en local sense pushejar, o en
+algun lloc on no vaig arribar— **no es descarta ni el seu ni aquest**. Es repassen tots dos i
+es quadren en un de sol.
+
+**L'orquestrador és l'Óscar i aquest gameplan.** El que en Gerard tingués fet s'hi incorpora
+—el detall que jo no sabia, les decisions que ja hagués pres, el que aporti de nou— però
+**la font de veritat i l'ordre de les fases surten d'aquí**. No es bifurca en dos plans
+paral·lels: és així com es perd la feina de tothom.
 
 ## Missió
 
