@@ -7,6 +7,22 @@
 
 Que **Dictats** es pugui instal·lar des de Google Play.
 
+## Públic objectiu (decisió de l'Óscar, 29-08)
+
+**Docents**, no alumnes. La primera fase va dirigida a **professors que practiquen per no
+cometre faltes ells mateixos** — un docent de català ha de tenir una ortografia impecable, i
+aquesta app és on s'hi entrena. Que després algun professor faci servir els dictats amb els
+seus alumnes és possible, però no és el cas d'ús pel qual es dissenya ni es posiciona.
+
+Condiciona la fitxa de Play (#19), l'ASO (#20) i el to de tota la interfície (#23):
+el públic és **adult i professional**, així que el to correcte és precís, no infantil.
+
+> 🔴 **Tensió oberta**: l'objectiu declarat parla de *"millorar redaccions"* i *"sintaxi i
+> gramàtica"*, però **un dictat no entrena la sintaxi** — en un dictat la sintaxi ja ve
+> donada i l'usuari la copia. El que entrena de veritat és ortografia, accentuació i
+> puntuació. Cal decidir si s'ajusta el posicionament o si s'afegeix un mode de redacció
+> lliure (fase 2). Detall i opcions a la [#23](https://github.com/CronosAIDev/wiki-cronos/issues/23).
+
 ## D'on partim (verificat, no suposat)
 
 | | Estat avui |
