@@ -11,7 +11,9 @@ Que **Dictats** es pugui instal·lar des de Google Play.
 
 | | Estat avui |
 |---|---|
-| Web en producció | ✅ `https://dictation.generaive.io`, PM2 `dictats-catala` a `kairos-vm` |
+| Web en producció | ✅ `https://dictation.generaive.io` (HTTP 302 → `/login`), PM2 `dictats-catala` `online`, 8 dies d'uptime, 0 reinicis inestables |
+| Certificat | ✅ vàlid fins al 27-10-2026 (certbot renova sol) |
+| **Ús real** | ⚠️ **2 correccions en tota la vida de l'app**, les dues el 23-24 de març. Cinc mesos sense cap |
 | PWA | ❌ **no hi ha `manifest.webmanifest`, ni `sw.js`, ni icones** |
 | Login | email + contrasenya contra `BrandWaiUserProfile` (MySQL `brandwaiapp`) |
 | Registre d'usuaris nous | ❌ no existeix: els comptes es creen fora de l'app |
@@ -19,6 +21,30 @@ Que **Dictats** es pugui instal·lar des de Google Play.
 
 `public/` només conté: `app.html`, `app.js`, `login.html`, `mobile.html`, `profile.html`,
 `style.css`.
+
+### El dato que condiciona tot el gameplan
+
+L'app s'ha fet servir **dos cops**, i el darrer va ser el **24 de març**. La conseqüència
+pràctica: **la crida a Claude fa cinc mesos que no s'executa**. Que el servei estigui amunt
+no vol dir que l'app funcioni — són coses diferents, i només una està verificada.
+
+Per això la **Fase R** va abans d'empaquetar res: no té sentit convertir en PWA i empaquetar
+com a TWA una app el nucli de la qual no sabem si respon.
+
+---
+
+## Fase R — Revisió abans d'empaquetar
+
+Dues comprovacions, totes dues prèvies a la Fase 1:
+
+- **L'app funciona de veritat avui?** Provar per execució real el flux sencer: login, dictat
+  per veu, correcció per text, correcció per foto, textos personals, perfil i vista mòbil.
+  Si alguna cosa falla, s'arregla abans de continuar.
+- **Model d'IA i cost per correcció.** Avui `src/routes/dictats.js` crida `claude-opus-4-6`
+  (tier Opus: $5/$25 per milió de tokens). Amb 2 usos el cost és zero; amb l'app a Play,
+  cada usuari que dicta és una crida que algú paga — i les correccions per foto envien la
+  imatge sencera. **Decisió de l'Óscar**: mesurar el cost real i decidir si un dictat bàsic
+  necessita Opus. Relacionat: avui no hi ha rate limit a cap de les dues rutes de correcció.
 
 ## El camí ja està resolt a la casa
 
@@ -117,11 +143,14 @@ Res d'això és codi, i tot bloqueja la publicació.
 ## Ordre real
 
 ```
-Fase 0 (Óscar)  ─────────────┐
-                             ├──> Fase 3 (fitxa)  ──> PUBLICAR
-Fase 1 ──> Fase 2 ───────────┘
-Fase 4 ──────────> abans del primer AAB
+Fase R (revisió) ──> Fase 1 ──> Fase 2 ───────┐
+                                              ├──> Fase 3 (fitxa) ──> PUBLICAR
+Fase 0 · DECISIÓ (Óscar) ─────────────────────┘
+Fase 4 ───────────> abans del primer AAB
 Reclutar testers ─> en paral·lel des del dia 1
 ```
 
-**Les Fases 1, 2 i 4 no depenen de la decisió de la Fase 0.** Es poden fer ja.
+- **La Fase R va primer.** No s'empaqueta una app que no sabem si funciona.
+- **Les Fases 1, 2 i 4 no depenen de la Fase 0** — es poden fer mentre l'Óscar decideix.
+- **Els 20 testers × 14 dies són calendari, no feina**: comencen a comptar quan algú els
+  recluta, i corren en paral·lel a tota la resta.
