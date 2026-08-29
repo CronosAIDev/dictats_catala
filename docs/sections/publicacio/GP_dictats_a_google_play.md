@@ -17,11 +17,23 @@ seus alumnes és possible, però no és el cas d'ús pel qual es dissenya ni es 
 Condiciona la fitxa de Play (#19), l'ASO (#20) i el to de tota la interfície (#23):
 el públic és **adult i professional**, així que el to correcte és precís, no infantil.
 
-> 🔴 **Tensió oberta**: l'objectiu declarat parla de *"millorar redaccions"* i *"sintaxi i
-> gramàtica"*, però **un dictat no entrena la sintaxi** — en un dictat la sintaxi ja ve
-> donada i l'usuari la copia. El que entrena de veritat és ortografia, accentuació i
-> puntuació. Cal decidir si s'ajusta el posicionament o si s'afegeix un mode de redacció
-> lliure (fase 2). Detall i opcions a la [#23](https://github.com/CronosAIDev/wiki-cronos/issues/23).
+### La promesa del producte (decidit per l'Óscar, 29-08)
+
+Es va detectar que l'objectiu declarat parlava de *"millorar redaccions"* i *"sintaxi"*, però
+**un dictat no entrena la sintaxi**: en un dictat la sintaxi ja ve donada i l'usuari la
+copia. El que entrena de veritat és **ortografia, accentuació i puntuació**.
+
+**Decisió: opció A — ajustar el posicionament.** Es ven pel que fa i fa bé:
+
+> **Detecta i elimina les faltes d'ortografia i accentuació que encara se t'escapen.**
+
+**No es promet** avaluació de sintaxi, de gramàtica ni de redaccions. Conseqüències:
+
+- La fitxa de Play (#19) i l'ASO (#20) es redacten amb aquesta promesa i **cap altra**.
+- **No es toca `CORRECTION_PROMPT`** per afegir categoria de gramàtica/concordança — i per
+  tant el benchmark de models (#22) **no s'ha de refer**.
+- Un mode de **redacció lliure** (l'usuari escriu i Claude n'avalua la sintaxi) queda com a
+  possible fase 2, **només si els docents ho demanen** un cop publicada.
 
 ## D'on partim (verificat, no suposat)
 
