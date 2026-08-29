@@ -14,6 +14,12 @@
 | F8 | Perfil + historial (/profile) | v1.0.0 | 2026-03-22 |
 | F9 | Deploy en mochi-vm (dictation.generaive.io) | v1.0.0 | 2026-03-22 |
 
+## En Curso
+
+| ID | Feature | Descripción | Estado | Asignado a |
+|----|---------|-------------|--------|------------|
+| F16 | Dictats en Google Play | [Gameplan](../sections/publicacio/GP_dictats_a_google_play.md) — PWA → TWA → ficha de Play. Bloqueado en Fase 0: decidir quién puede usar la app (hoy el login va contra la tabla de clientes de Trawlingweb) | En curso | gerard |
+
 ## Pendiente
 
 | ID | Feature | Descripción | Estado | Prioridad |
