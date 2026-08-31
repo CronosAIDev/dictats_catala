@@ -2,9 +2,19 @@
 
 ## Autenticación y Autorización
 
-- **Mecanismo**: email + contrasenya contra MySQL `brandwaiapp` → `BrandWaiUserProfile`
-  JOIN `BrandWaiUsers` (`src/lib/auth.js`). **Mateixa base d'usuaris que FeedScale
-  Console** — no és una decisió d'aquest repo, és herència del sistema compartit.
+- **Mecanismo**: identitat pròpia de Dictats. Email + contrasenya amb **bcrypt** (12
+  rondes) contra `dictats_usuarios`, a la base `cronosai` (`src/lib/usuaris.js`), i
+  opcionalment **Google OAuth 2.0** (`src/lib/googleOAuth.js`). Decisió d'Óscar del
+  30-08-2026, Fase 0 del gameplan de publicació a Play.
+- **Ja NO es fa servir `BrandWaiUserProfile`.** Aquella era la taula de clients de
+  FeedScale/Trawlingweb, amb les contrasenyes en text pla. Dictats se n'ha desacoblat:
+  `src/lib/auth.js` i `src/lib/mysql.js` s'han retirat del repo.
+- **Esborrar el compte**: `DELETE /api/account` des de dins de l'app i la pàgina pública
+  `/esborrar-compte`, accessible **sense sessió**. Ho exigeix Google Play des de l'abril
+  de 2024 a tota app que deixi crear compte des de dins, i demana les dues vies.
+  L'esborrat toca dues bases —identitat a MySQL, progrés a SQLite— i va en aquest ordre:
+  **primer la identitat**. Si es fes al revés i fallés el segon pas, l'usuari es quedaria
+  sense dictats, amb el compte viu i amb un missatge dient que no s'ha esborrat res.
 - **Sessió**: `express-session`, cookie `httpOnly`, `secure` en producció, `maxAge` 8h.
   Secret via `SESSION_SECRET` — **el codi porta un fallback insegur**
   (`'dictats-catala-dev-secret-change-me'`) si la variable no està definida
@@ -75,9 +85,14 @@
 
 ## Reglas Específicas del Proyecto
 
-- **Contrasenyes en text pla a `BrandWaiUserProfile`**: no és una decisió d'aquest repo.
-  És l'esquema compartit amb FeedScale Console — qualsevol canvi (hash amb bcrypt, etc.)
-  afecta els dos productes i s'ha de coordinar, no fer-se unilateralment aquí.
+- **Les contrasenyes en text pla ja no hi són.** Aquest apartat deia fins al 31-08-2026
+  que vivien en text pla a `BrandWaiUserProfile` i que no es podia canviar
+  unilateralment, perquè l'esquema era compartit amb FeedScale Console. Era el pitjor
+  punt d'aquest protocol i **se'n va sencer**: amb identitat pròpia, Dictats desa hashes
+  de bcrypt a la seva taula i no toca la de l'altre producte.
+- **Els comptes creats per Google no tenen contrasenya coneguda**: `password_hash` és
+  `NOT NULL`, així que s'hi desa el hash d'un secret aleatori de 32 bytes que ningú té.
+  El login per contrasenya no hi casarà mai mentre l'usuari no en posi una.
 - **Sense rate limit a `/api/correct` i `/api/correct-image`**: aquests endpoints criden
   l'API d'Anthropic (cost per crida) i només estan protegits per `requireAuth` — un
   usuari autenticat podria generar-hi trucades repetides sense límit. `loginLimiter`

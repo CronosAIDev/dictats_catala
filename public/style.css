@@ -692,3 +692,56 @@ body {
 .rank-rung .rung-nom { min-width: 92px; }
 .rung-que { font-size: .8125rem; color: var(--text-muted); font-weight: 400; flex: 1; }
 .rung-punts { font-variant-numeric: tabular-nums; font-size: .8125rem; color: var(--text-muted); }
+
+/* ── Fase 0: alta pròpia, Google i esborrat de compte ─────────
+   El login va deixar de ser només un formulari: ara hi conviuen entrar,
+   donar-se d'alta i el botó de Google, i cal un camí visible cap a
+   l'esborrat del compte perquè Play l'exigeix. */
+
+.btn-secondary {
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.btn-secondary:hover:not(:disabled) { background: var(--bg); }
+
+.btn-danger { background: var(--error); color: white; }
+.btn-danger:hover:not(:disabled) { filter: brightness(0.92); }
+
+/* Separador «o» entre el formulari i el botó de Google. */
+.separador-o {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 18px 0;
+  color: var(--text-muted);
+  font-size: 0.8125rem;
+}
+.separador-o::before,
+.separador-o::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
+.peu-login {
+  margin-top: 16px;
+  text-align: center;
+  font-size: 0.875rem;
+  color: var(--text-muted);
+}
+.peu-login a { color: var(--primary); text-decoration: none; }
+.peu-login a:hover { text-decoration: underline; }
+.peu-legal { margin-top: 20px; font-size: 0.8125rem; }
+
+.llista-dades {
+  margin: 12px 0 20px 18px;
+  font-size: 0.9375rem;
+  line-height: 1.7;
+}
+.text-muted { color: var(--text-muted); font-size: 0.875rem; }

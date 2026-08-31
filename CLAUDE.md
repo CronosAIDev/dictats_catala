@@ -11,12 +11,13 @@ retorna la correcció amb errors classificats i una escala motivadora per nombre
 (no per percentatge).
 
 És un side project personal d'Óscar (no un producte de Trawlingweb), tot i que comparteix
-autenticació amb FeedScale Console (`BrandWaiUserProfile`).
+autenticació amb FeedScale Console. **Des del 31-08-2026 ja no**: té identitat pròpia
+(`dictats_usuarios` a `cronosai`), decidida a la Fase 0 del gameplan de Play.
 
 ## Stack
 
 - Node.js 22+, Express 5, vanilla JS/HTML/CSS (sense build ni transpilació)
-- Auth: MySQL `brandwaiapp` → `BrandWaiUserProfile` (compartida amb FeedScale)
+- Auth: MySQL `cronosai` → `dictats_usuarios` (bcrypt) + Google OAuth, prefix `dictats_`
 - Progrés local: SQLite (`better-sqlite3`), fora de l'arbre del repo
 - IA: `@anthropic-ai/sdk`, model `claude-opus-4-6`
 - Deploy: `kairos-vm` (GCP `kairos-family-app`) amb PM2 + nginx + certbot

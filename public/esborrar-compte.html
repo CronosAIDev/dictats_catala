@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="ca">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Esborrar el compte · Dictats en Català</title>
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="icon" href="/icons/icon-192.png">
+  <link rel="stylesheet" href="/style.css">
+  <script src="/pwa.js" defer></script>
+</head>
+<body>
+  <!--
+    Pàgina pública per demanar l'esborrat del compte.
+
+    Google Play l'exigeix des de l'abril de 2024 a tota app que deixi crear
+    compte des de dins, i demana DUES vies: un camí dins de l'app i una URL web
+    com aquesta. Ha de ser accessible SENSE iniciar sessió — qui ja no pot
+    entrar també ha de poder demanar-ho—, així que la ruta va abans de
+    `requireAuth` a src/index.js.
+
+    Aquesta URL és la que es posa al formulari de Data Safety de la fitxa.
+  -->
+  <div class="page-center">
+    <div class="login-box">
+      <div class="login-logo">
+        <h1>Esborrar el compte</h1>
+        <p>I totes les dades que hi ha lligades</p>
+      </div>
+
+      <div class="card">
+        <div class="card-body">
+          <div id="alert" class="alert alert-error" style="display:none"></div>
+          <div id="fet" class="alert alert-success" style="display:none">
+            El compte s'ha esborrat. Gràcies per haver-lo fet servir.
+          </div>
+
+          <div id="contingut">
+            <p>En esborrar el compte desapareix, i no es pot recuperar:</p>
+            <ul class="llista-dades">
+              <li>El teu <strong>correu</strong> i el teu nom</li>
+              <li>Tots els <strong>dictats</strong> que has fet, amb la puntuació i els errors</li>
+              <li>Els <strong>textos teus</strong> que hagis creat</li>
+              <li>El teu <strong>rang</strong> i tot el progrés</li>
+            </ul>
+
+            <div id="entrat" style="display:none">
+              <p class="text-muted">Has entrat com a <strong id="qui"></strong>.</p>
+              <button class="btn btn-danger btn-block btn-lg" id="btn-esborrar">
+                Esborrar el meu compte per sempre
+              </button>
+            </div>
+
+            <div id="no-entrat" style="display:none">
+              <p class="text-muted">
+                Per esborrar-lo des d'aquí has d'entrar primer. Si ja no hi pots entrar,
+                escriu a <a href="mailto:otc@trawlingweb.app">otc@trawlingweb.app</a> des del
+                correu del compte i l'esborrem nosaltres.
+              </p>
+              <a class="btn btn-primary btn-block btn-lg" href="/login">Entrar</a>
+            </div>
+          </div>
+
+          <p class="peu-login"><a href="/login">Tornar</a></p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const $ = (id) => document.getElementById(id);
+
+    fetch('/api/me')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (d && d.email) {
+          $('qui').textContent = d.email;
+          $('entrat').style.display = '';
+        } else {
+          $('no-entrat').style.display = '';
+        }
+      })
+      .catch(() => { $('no-entrat').style.display = ''; });
+
+    $('btn-esborrar').addEventListener('click', async () => {
+      // Dues confirmacions a posta: és irreversible i el botó viu en una pàgina
+      // a la qual s'arriba per un enllaç del login.
+      if (!confirm('Segur? El compte i tots els dictats desapareixen i no es poden recuperar.')) return;
+      if (!confirm('Última confirmació. Això no es pot desfer.')) return;
+
+      const btn = $('btn-esborrar');
+      btn.disabled = true;
+      btn.textContent = 'Esborrant…';
+      try {
+        const res = await fetch('/api/account', { method: 'DELETE' });
+        const data = await res.json().catch(() => ({}));
+        if (res.ok) {
+          $('contingut').style.display = 'none';
+          $('fet').style.display = 'flex';
+        } else {
+          $('alert').textContent = data.error || 'No s\'ha pogut esborrar. Torna a provar.';
+          $('alert').style.display = 'flex';
+          btn.disabled = false;
+          btn.textContent = 'Esborrar el meu compte per sempre';
+        }
+      } catch (e) {
+        $('alert').textContent = 'No s\'ha pogut connectar. Torna a provar.';
+        $('alert').style.display = 'flex';
+        btn.disabled = false;
+        btn.textContent = 'Esborrar el meu compte per sempre';
+      }
+    });
+  </script>
+</body>
+</html>

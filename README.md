@@ -8,7 +8,8 @@ Aplicació Node.js/Express que permet als usuaris practicar dictats en català a
 
 ## Funcionalitats
 
-- Autenticació via MySQL (`BrandWaiUserProfile`) — mateixa BD que FeedScale
+- Compte propi de Dictats: alta amb email i contrasenya (bcrypt) o entrant amb Google
+- Esborrar el compte i totes les dades des de l'app o des de `/esborrar-compte`
 - 3 nivells predefinits (Bàsic, Intermedi, Avançat) + nivell personal (textos propis)
 - Avís si el dispositiu no té veu catalana instal·lada
 - Mode editor (textarea) i mode paper (foto opcional), tant a escriptori com a mòbil
@@ -24,7 +25,7 @@ Aplicació Node.js/Express que permet als usuaris practicar dictats en català a
 ## Stack
 
 - **Backend**: Node.js + Express
-- **Auth**: MySQL `brandwaiapp` (BrandWaiUserProfile)
+- **Auth**: MySQL `cronosai` → `dictats_usuarios` (bcrypt) + Google OAuth
 - **Progrés**: SQLite (`data/dictats.db`)
 - **IA**: Anthropic Claude API (`claude-opus-4-6`)
 - **Frontend**: Vanilla JS + HTML/CSS
@@ -70,7 +71,9 @@ src/
   index.js              # Express server
   routes/auth.js        # Login/logout (MySQL)
   routes/dictats.js     # Textos, correcció, perfil
-  lib/auth.js           # Cerca usuari a BrandWaiUserProfile
+  lib/usuaris.js        # Comptes propis: bcrypt, alta, Google, esborrat
+  lib/googleOAuth.js    # OAuth 2.0 de Google, sense dependències
+  lib/db-mysql.js       # MySQL `cronosai`, prefix dictats_
   lib/diff.js           # Comparació determinista original/alumne
   lib/rang.js           # Punts i rangs (progressió acumulada)
   lib/db.js             # SQLite (user_texts, user_progress, user_errors)

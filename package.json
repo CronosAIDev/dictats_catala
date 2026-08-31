@@ -6,7 +6,7 @@
   "scripts": {
     "start": "node src/index.js",
     "dev": "node --watch src/index.js",
-    "test": "node test/diff.test.js && node test/rang.test.js && node test/dictat.test.js",
+    "test": "node test/diff.test.js && node test/rang.test.js && node test/dictat.test.js && node test/usuaris.test.js",
     "benchmark": "node scripts/benchmark/puntua.js"
   },
   "repository": {
@@ -22,10 +22,11 @@
   "homepage": "https://github.com/CronosAIDev/dictats_catala#readme",
   "dependencies": {
     "@anthropic-ai/sdk": "^0.120.0",
-    "bcrypt": "^6.0.0",
+    "bcryptjs": "^3.0.3",
     "better-sqlite3": "^12.8.0",
     "dotenv": "^17.3.1",
     "express": "^5.2.1",
+    "express-mysql-session": "^3.0.3",
     "express-rate-limit": "^8.3.1",
     "express-session": "^1.19.0",
     "helmet": "^8.1.0",

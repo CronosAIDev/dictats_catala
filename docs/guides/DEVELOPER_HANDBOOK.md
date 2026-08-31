@@ -4,16 +4,16 @@
 
 App web per practicar dictats en català amb correcció automàtica via Claude API. Els usuaris escolten el text per síntesi de veu, l'escriuen (o el fan en paper i pugen una foto), i Claude retorna la correcció amb errors classificats i una escala motivadora.
 
-Forma part de l'ecosistema Trawlingweb. Usa la mateixa autenticació que FeedScale Console (`BrandWaiUserProfile` a MySQL `brandwaiapp`).
+Té **identitat pròpia** des del 31-08-2026 (Fase 0 del gameplan de publicació a Play): taula `dictats_usuarios` a la base compartida `cronosai`, contrasenyes amb bcrypt i entrada opcional amb Google. Ja **no** depèn de `BrandWaiUserProfile`, que és la taula de clients de Trawlingweb i tenia les contrasenyes en text pla.
 
 ## Stack Tecnològic
 
 - **Runtime**: Node.js 22+
 - **Framework**: Express 5
-- **Auth**: MySQL `brandwaiapp` → `BrandWaiUserProfile` + `BrandWaiUsers`
+- **Auth**: MySQL `cronosai` → `dictats_usuarios` (bcrypt, prefix `dictats_`) + Google OAuth 2.0
 - **Progrés local**: SQLite via `better-sqlite3` (addon natiu — veure nota manteniment)
 - **IA**: `@anthropic-ai/sdk` — model `claude-opus-4-6`
-- **Sessions**: `express-session` + cookie httpOnly
+- **Sessions**: `express-session` amb `express-mysql-session` (taula `dictats_sessions`) + cookie httpOnly
 - **Seguretat**: `helmet`, `express-rate-limit` (trust proxy activat per Caddy)
 - **Pujada fotos**: `multer` (memory storage, max 10MB)
 - **Frontend**: Vanilla JS, HTML/CSS, Web Speech API
@@ -61,8 +61,11 @@ Browser → Caddy (dictation.generaive.io:443) → Express (localhost:3003)
 ```
 
 ### Flux d'autenticació
-- Login amb email + contrasenya (plain text, igual que FeedScale)
-- Consulta `BrandWaiUserProfile JOIN BrandWaiUsers WHERE email = ? AND password = ?`
+- Alta i login amb email + contrasenya, amb **bcrypt** (12 rondes)
+- O entrant amb Google: `/auth/google` -> `/auth/google/callback`. Si el correu ja
+  tenia compte, s'hi vincula el `google_id` en comptes de duplicar la persona
+- Esborrar el compte: `DELETE /api/account` i la pàgina pública `/esborrar-compte`.
+  Ho exigeix Play, i toca les dues bases: primer la identitat, després el progrés
 - Sessió guardada en `req.session.profile`
 - `requireAuth` middleware protegeix totes les rutes
 

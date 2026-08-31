@@ -4,10 +4,13 @@ const session = require('express-session');
 const helmet = require('helmet');
 const path = require('path');
 
+const MySQLStore = require('express-mysql-session')(session);
+
 const authRoutes = require('./routes/auth');
 const dictatsRoutes = require('./routes/dictats');
 const requireAuth = require('./middleware/requireAuth');
 const { comprovaAArrencada } = require('./lib/authBypass');
+const dbMysql = require('./lib/db-mysql');
 
 const app = express();
 const PORT = process.env.PORT || 3003;
@@ -31,7 +34,28 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(express.static(path.join(__dirname, '../public')));
 
+// Les sessions viuen a MySQL quan hi ha base configurada. Amb el MemoryStore
+// d'abans morien a cada reinici —cada desplegament feia fora tothom— i el
+// procés escopia l'avís corresponent a cada arrencada. En local sense base,
+// s'hi queda i s'avisa, que és el que deixa treballar sense credencials.
+const magatzemDeSessions = dbMysql.estaConfigurada()
+  ? new MySQLStore({
+      ...dbMysql.configDeSessions(),
+      schema: { tableName: dbMysql.P + 'sessions' },
+      createDatabaseTable: true,
+      // Cada 15 minuts es netegen les caducades; sense això la taula creix
+      // sense sostre.
+      clearExpired: true,
+      checkExpirationInterval: 15 * 60 * 1000,
+    })
+  : undefined;
+
+if (!magatzemDeSessions && process.env.NODE_ENV === 'production') {
+  console.warn('AVÍS: sense DB_USER/DB_NAME les sessions van a memòria i es perden a cada reinici.');
+}
+
 app.use(session({
+  store: magatzemDeSessions,
   secret: process.env.SESSION_SECRET || 'dictats-catala-dev-secret-change-me',
   resave: false,
   saveUninitialized: false,
@@ -43,8 +67,17 @@ app.use((req, res, next) => {
   next();
 });
 
-app.use('/api', authRoutes);
+app.use('/api', authRoutes.api);
+app.use('/auth', authRoutes.auth);
 app.use('/api', dictatsRoutes);
+
+// URL pública per demanar l'esborrat del compte. Google Play l'exigeix a part
+// del botó de dins de l'app, i ha de ser accessible SENSE iniciar sessió: qui
+// ja no pot entrar també ha de poder demanar-ho. Per això va abans de
+// `requireAuth` i no en depèn.
+app.get('/esborrar-compte', (req, res) => {
+  res.sendFile(path.join(__dirname, '../public/esborrar-compte.html'));
+});
 
 app.get('/login', (req, res) => {
   if (req.session?.profile) return res.redirect('/');

@@ -34,9 +34,27 @@
             <label class="form-label">Contrasenya</label>
             <input type="password" id="login-password" class="form-input" placeholder="••••••••" autocomplete="current-password">
           </div>
+          <div class="form-group" id="grup-nom" style="display:none">
+            <label class="form-label">Com et dius</label>
+            <input type="text" id="login-name" class="form-input" placeholder="El teu nom" autocomplete="given-name">
+          </div>
           <button class="btn btn-primary btn-block btn-lg" id="btn-login">Entrar</button>
+
+          <div id="google-bloc" style="display:none">
+            <div class="separador-o"><span>o</span></div>
+            <a class="btn btn-secondary btn-block btn-lg" id="btn-google" href="/auth/google">Entra amb Google</a>
+          </div>
+
+          <p class="peu-login">
+            <span id="text-canvi">Encara no tens compte?</span>
+            <a href="#" id="btn-canvi">Crea'n un</a>
+          </p>
         </div>
       </div>
+
+      <p class="peu-login peu-legal">
+        <a href="/esborrar-compte">Esborrar el compte i les dades</a>
+      </p>
     </div>
   </div>
 
@@ -50,16 +68,62 @@
       if (!email || !password) return showAlert('Omple tots els camps');
       const btn = document.getElementById('btn-login');
       btn.disabled = true;
-      btn.textContent = 'Entrant…';
-      const res = await fetch('/api/login', {
+      btn.textContent = mode === 'alta' ? 'Creant el compte…' : 'Entrant…';
+      const alta = mode === 'alta';
+      const res = await fetch(alta ? '/api/register' : '/api/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email, password, name: document.getElementById('login-name').value.trim() }),
       });
       const data = await res.json();
       if (res.ok) { window.location.href = '/'; }
-      else { showAlert(data.error || 'Error desconegut'); btn.disabled = false; btn.textContent = 'Entrar'; }
+      else {
+        showAlert(data.error || 'Error desconegut');
+        btn.disabled = false;
+        btn.textContent = alta ? 'Crear el compte' : 'Entrar';
+      }
     }
+
+    // Alta i login comparteixen pantalla: només canvia on va la petició i què
+    // diu el botó. Play exigeix que qui es descarrega l'app pugui fer-se un
+    // compte, i abans això no existia enlloc.
+    let mode = 'login';
+    const $ = (id) => document.getElementById(id);
+
+    function pintaMode() {
+      const alta = mode === 'alta';
+      $('grup-nom').style.display = alta ? '' : 'none';
+      $('btn-login').textContent = alta ? 'Crear el compte' : 'Entrar';
+      $('text-canvi').textContent = alta ? 'Ja tens compte?' : 'Encara no tens compte?';
+      $('btn-canvi').textContent = alta ? 'Entra' : "Crea'n un";
+      $('login-password').setAttribute('autocomplete', alta ? 'new-password' : 'current-password');
+      alertEl.style.display = 'none';
+    }
+
+    $('btn-canvi').addEventListener('click', (e) => {
+      e.preventDefault();
+      mode = mode === 'login' ? 'alta' : 'login';
+      pintaMode();
+    });
+
+    // El botó de Google només s'ensenya si el servidor el té configurat: sense
+    // les credencials de GCP, ensenyar-lo és prometre una porta que no obre.
+    fetch('/api/auth-options')
+      .then((r) => r.json())
+      .then((d) => { if (d.google) $('google-bloc').style.display = ''; })
+      .catch(() => {});
+
+    // Les fallades de Google tornen per query string, perquè el callback és una
+    // navegació i no un fetch.
+    const MOTIUS = {
+      'google-cancellat': 'Has cancel·lat l\'entrada amb Google.',
+      'google-estat': 'La sessió amb Google ha caducat. Torna-ho a provar.',
+      'google-fallada': 'No s\'ha pogut entrar amb Google. Torna-ho a provar.',
+      'google-sense-codi': 'Google no ha tornat cap codi. Torna-ho a provar.',
+      'google-no-configurat': 'L\'entrada amb Google no està disponible ara mateix.',
+    };
+    const motiu = new URLSearchParams(location.search).get('error');
+    if (motiu && MOTIUS[motiu]) showAlert(MOTIUS[motiu]);
 
     document.getElementById('btn-login').addEventListener('click', login);
     ['login-email', 'login-password'].forEach(id => {
