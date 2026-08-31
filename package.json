@@ -6,7 +6,8 @@
   "scripts": {
     "start": "node src/index.js",
     "dev": "node --watch src/index.js",
-    "test": "node test/diff.test.js && node test/rang.test.js && node test/dictat.test.js"
+    "test": "node test/diff.test.js && node test/rang.test.js && node test/dictat.test.js",
+    "benchmark": "node scripts/benchmark/puntua.js"
   },
   "repository": {
     "type": "git",

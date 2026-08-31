@@ -158,6 +158,34 @@ function ajuntaApostrofs(diferencies) {
       }
     }
 
+    // Tercer cas, i el que menys es veu venir: l'alineació ha decidit que la
+    // paraula apostrofada no hi és i que sobren dues paraules soltes. Passa quan
+    // la partició genera una paraula que ja existeix a prop a l'original i
+    // l'àncora se l'endú — «A l'estiu el sol...» escrit «A el estiu el sol...»:
+    // l'«el» de l'alumne s'ancora amb l'«el» de després i queda l'apòstrof
+    // convertit en una omissió més dues paraules de més. Per a qui escriu és
+    // una sola falta d'apòstrof, i comptar-li'n tres és exactament el que F31
+    // havia d'eliminar.
+    const tercera = diferencies[k + 2];
+    const esberlat = d.original && d.escrit === null && APOSTROFS.test(d.original)
+      && seguent && seguent.original === null && seguent.escrit !== null
+      && tercera && tercera.original === null && tercera.escrit !== null;
+    if (esberlat) {
+      const senseApostrof = clau(d.original.replace(APOSTROFS, ''));
+      // L'ordre en què queden les dues paraules afegides depèn de quina se
+      // n'ha endut l'àncora, així que es proven les dues combinacions.
+      const endavant = clau(seguent.escrit + tercera.escrit);
+      const enrere = clau(tercera.escrit + seguent.escrit);
+      const millor = distancia(senseApostrof, endavant) <= distancia(senseApostrof, enrere)
+        ? { text: `${seguent.escrit} ${tercera.escrit}`, d: distancia(senseApostrof, endavant) }
+        : { text: `${tercera.escrit} ${seguent.escrit}`, d: distancia(senseApostrof, enrere) };
+      if (millor.d <= 2) {
+        fusionades.push({ pos: d.pos, original: d.original, escrit: millor.text });
+        k += 2;
+        continue;
+      }
+    }
+
     // El mateix a l'inrevés: l'original són dues paraules i l'alumne les ha
     // ajuntat amb apòstrof.
     const ajuntat = d.original && d.escrit && seguent

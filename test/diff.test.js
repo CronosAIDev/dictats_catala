@@ -42,6 +42,18 @@ comprova('pronom feble', [[2, 1, 'apostrofació']],
   resum('Els castells s' + AP + 'aixequen avui', 'Els castells se aixequen avui'));
 comprova('a l\'inrevés, i abasta dues paraules de l\'original', [[2, 2, 'apostrofació']],
   resum('Vaig a la escola nova', 'Vaig a l' + AP + 'escola nova'));
+// Regressió del banc de proves (#22): quan la paraula que surt de desfer
+// l'apòstrof ja existeix a prop, l'àncora se l'endú i l'apostrofació es
+// desmuntava en una omissió més dues paraules de més — tres errors on n'hi ha
+// un. Falla contra la versió d'abans de l'arreglo.
+console.log('\nApostrofació quan la partició xoca amb una paraula que ja hi és:');
+comprova('«A l' + AP + 'estiu el sol» escrit «A el estiu el sol»',
+  [[1, 1, 'apostrofació']],
+  resum('A l' + AP + 'estiu el sol escalfa', 'A el estiu el sol escalfa'));
+comprova('i no s' + AP + 'inventa cap paraula de més', 0,
+  compara('A l' + AP + 'estiu el sol escalfa', 'A el estiu el sol escalfa')
+    .errors.filter(e => e.type === 'paraula afegida').length);
+
 comprova('dues paraules afegides de debò no es fusionen',
   [[null, 1, 'paraula afegida'], [null, 1, 'paraula afegida']],
   resum('La casa és gran', 'La casa és molt molt gran'));
