@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="ca">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Política de privacitat · Dictats en Català</title>
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="icon" href="/icons/icon-192.png">
+  <link rel="stylesheet" href="/style.css">
+  <script src="/pwa.js" defer></script>
+</head>
+<body>
+  <!--
+    Política de privacitat. Google Play l'exigeix publicada en una URL i
+    enllaçada des de la fitxa, i el formulari de Data Safety ha de dir el mateix
+    que digui aquí. Va servida des de la mateixa app i SENSE sessió: qui encara
+    no té compte també l'ha de poder llegir abans de fer-se'n un.
+
+    Tot el que hi ha escrit surt d'auditar el codi, no de suposar-lo. Si el codi
+    canvia, aquest fitxer canvia el mateix dia: una política que menteix és
+    motiu de retirada de Play, i mentir-hi és pitjor que no tenir-la.
+  -->
+  <div class="pagina-legal">
+    <h1>Política de privacitat</h1>
+    <p class="text-muted">Darrera actualització: 31 d'agost de 2026</p>
+
+    <p>
+      <strong>Dictats en Català</strong> serveix per practicar dictats en català i rebre'n
+      la correcció. Aquesta pàgina explica quines dades es fan servir, on van i com
+      esborrar-les. Està escrita per ser llegida, no per cobrir-nos les espatlles.
+    </p>
+
+    <h2>Qui n'és responsable</h2>
+    <p>
+      Óscar Trabazos Claveria. Per a qualsevol cosa relacionada amb les teves dades:
+      <a href="mailto:otc@trawlingweb.app">otc@trawlingweb.app</a>.
+    </p>
+
+    <h2>Quines dades es recullen</h2>
+    <table class="taula-legal">
+      <thead><tr><th>Dada</th><th>Per què</th><th>Base legal</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><strong>Correu electrònic</strong> i, si en poses, el teu nom</td>
+          <td>Identificar el teu compte i lligar-hi el teu progrés</td>
+          <td>Execució del servei</td>
+        </tr>
+        <tr>
+          <td><strong>Contrasenya</strong></td>
+          <td>Entrar. Es desa <strong>xifrada amb bcrypt</strong>: ni nosaltres la podem llegir</td>
+          <td>Execució del servei</td>
+        </tr>
+        <tr>
+          <td><strong>Identificador de Google</strong>, si entres amb Google</td>
+          <td>Reconèixer-te sense contrasenya. De Google només se'n rep l'identificador, el correu i el nom</td>
+          <td>Execució del servei</td>
+        </tr>
+        <tr>
+          <td><strong>Els dictats que fas</strong>: text, puntuació, errors i data</td>
+          <td>Ensenyar-te el teu progrés i de què falles</td>
+          <td>Execució del servei</td>
+        </tr>
+        <tr>
+          <td><strong>Els textos que crees tu</strong></td>
+          <td>Poder-los dictar quan vulguis</td>
+          <td>Execució del servei</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <p>
+      <strong>No es recull res més.</strong> L'app no demana cap permís del sistema: ni
+      ubicació, ni contactes, ni càmera, ni micròfon. No hi ha publicitat, ni analítica de
+      tercers, ni identificadors de seguiment, i les teves dades no es venen ni es cedeixen
+      a ningú amb finalitats comercials.
+    </p>
+
+    <h2>Les fotos, si fas el dictat en paper</h2>
+    <p>
+      Si fotografies un dictat escrit a mà, la imatge s'envia per corregir-la i
+      <strong>no es desa enlloc</strong>: viu només a la memòria del servidor mentre dura la
+      petició i després desapareix. No s'escriu a cap disc ni a cap base de dades. El que sí
+      que queda és el resultat de la correcció, com el de qualsevol altre dictat.
+    </p>
+    <p>
+      La foto la tries tu des del selector de fitxers del navegador. L'app no obre la càmera
+      pel seu compte ni té accés a la teva galeria.
+    </p>
+
+    <h2>Qui més hi intervé</h2>
+    <p>
+      La correcció de l'app té dues parts, i només una surt del servidor:
+    </p>
+    <ul>
+      <li>
+        <strong>Trobar els errors es fa aquí</strong>, comparant el teu text amb l'original.
+        Aquesta part no surt del servidor.
+      </li>
+      <li>
+        <strong>Escriure l'explicació de cada error la fa Anthropic</strong> (Claude). Se li
+        envien <strong>només les paraules que has fallat</strong> —la correcta, la que has
+        escrit i el tipus d'error—, mai el text sencer que has escrit ni el teu correu ni cap
+        dada del teu compte.
+      </li>
+      <li>
+        <strong>Si corregeixes per foto</strong>, aquesta sí que s'envia sencera a Anthropic
+        perquè en transcrigui el que hi ha escrit. És l'única manera de llegir un manuscrit.
+      </li>
+    </ul>
+    <p>
+      Anthropic és una empresa dels Estats Units, així que en aquests dos casos hi ha una
+      transferència internacional de dades. Pots llegir com les tracta a
+      <a href="https://www.anthropic.com/legal/privacy" rel="noopener">anthropic.com/legal/privacy</a>.
+    </p>
+    <p class="text-muted">
+      Si el dictat el fas escrivint i no per foto, el text que has escrit
+      <strong>no surt del servidor</strong>: només en surten les paraules concretes que has
+      fallat.
+    </p>
+
+    <h2>On viuen les dades</h2>
+    <ul>
+      <li>El <strong>compte</strong> (correu, contrasenya xifrada, nom) en una base de dades MySQL.</li>
+      <li>El <strong>progrés</strong> i els teus textos, en una base de dades local del servidor.</li>
+      <li>Els dos servidors són a la Unió Europea.</li>
+    </ul>
+
+    <h2>Al teu dispositiu</h2>
+    <ul>
+      <li>Una <strong>galeta de sessió</strong> per mantenir-te dins. Caduca a les 8 hores i no serveix per seguir-te enlloc.</li>
+      <li>Les teves <strong>preferències</strong> (velocitat de lectura, si es dicta la puntuació) al navegador.</li>
+      <li>Un <strong>esborrany</strong> del que estàs escrivint, perquè no el perdis si es tanca la pàgina. S'esborra en corregir i en tancar la sessió.</li>
+    </ul>
+    <p>Res d'això s'envia enlloc ni es fa servir per fer publicitat.</p>
+
+    <h2>Quant de temps es guarda</h2>
+    <p>
+      Mentre tinguis el compte. <strong>Quan l'esborres, s'esborra tot</strong>: el compte,
+      els dictats, els errors i els teus textos. No en queda cap còpia per a nosaltres.
+    </p>
+
+    <h2>Esborrar el compte</h2>
+    <p>
+      Des de l'app o des de <a href="/esborrar-compte">aquesta pàgina</a>, quan vulguis i
+      sense demanar permís a ningú. Si ja no hi pots entrar, escriu a
+      <a href="mailto:otc@trawlingweb.app">otc@trawlingweb.app</a> des del correu del compte
+      i ho fem nosaltres.
+    </p>
+
+    <h2>Els teus drets</h2>
+    <p>
+      Pots demanar accedir a les teves dades, rectificar-les, esborrar-les, limitar-ne el
+      tractament, oposar-t'hi o emportar-te-les. N'hi ha prou amb escriure a
+      <a href="mailto:otc@trawlingweb.app">otc@trawlingweb.app</a>. Si creus que no s'ha fet
+      bé, pots reclamar a l'Autoritat Catalana de Protecció de Dades
+      (<a href="https://apdcat.gencat.cat" rel="noopener">apdcat.gencat.cat</a>).
+    </p>
+
+    <h2>Menors</h2>
+    <p>
+      L'app està pensada per a persones adultes que volen millorar la seva ortografia. No va
+      dirigida a menors de 14 anys ni en recull dades a posta.
+    </p>
+
+    <h2>Canvis</h2>
+    <p>
+      Si canvia alguna cosa d'aquí, es canvia la data del principi. Si el canvi és
+      important, s'avisa dins de l'app.
+    </p>
+
+    <p class="peu-login"><a href="/login">Tornar</a></p>
+  </div>
+</body>
+</html>

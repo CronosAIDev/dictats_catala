@@ -75,6 +75,13 @@ app.use('/api', dictatsRoutes);
 // del botó de dins de l'app, i ha de ser accessible SENSE iniciar sessió: qui
 // ja no pot entrar també ha de poder demanar-ho. Per això va abans de
 // `requireAuth` i no en depèn.
+// La política de privacitat va servida per la mateixa app i **sense sessió**: Play
+// l'exigeix en una URL i qui encara no té compte l'ha de poder llegir abans de
+// fer-se'n un. És també la URL que va al formulari de Data Safety.
+app.get('/privacitat', (req, res) => {
+  res.sendFile(path.join(__dirname, '../public/privacitat.html'));
+});
+
 app.get('/esborrar-compte', (req, res) => {
   res.sendFile(path.join(__dirname, '../public/esborrar-compte.html'));
 });

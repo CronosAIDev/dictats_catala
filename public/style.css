@@ -745,3 +745,30 @@ body {
   line-height: 1.7;
 }
 .text-muted { color: var(--text-muted); font-size: 0.875rem; }
+
+/* Pàgines legals: privacitat i esborrat. Text llarg per llegir, no per fullejar. */
+.pagina-legal {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 32px 20px 64px;
+  line-height: 1.7;
+}
+.pagina-legal h1 { font-size: 1.5rem; margin-bottom: 4px; }
+.pagina-legal h2 {
+  font-size: 1.0625rem;
+  margin: 32px 0 8px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border);
+}
+.pagina-legal p, .pagina-legal ul { margin-bottom: 12px; }
+.pagina-legal ul { margin-left: 20px; }
+.pagina-legal a { color: var(--primary); }
+
+.taula-legal { width: 100%; border-collapse: collapse; margin: 12px 0 16px; font-size: 0.9375rem; }
+.taula-legal th, .taula-legal td {
+  text-align: left;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+}
+.taula-legal th { color: var(--text-muted); font-weight: 600; font-size: 0.8125rem; }
