@@ -22,7 +22,7 @@ Té **identitat pròpia** des del 31-08-2026 (Fase 0 del gameplan de publicació
 
 ### Requisits
 - Node.js 22+
-- Accés a MySQL `db1.bwai.cc` (brandwaiapp)
+- Accés a MySQL `db1.bwai.cc` (base `cronosai`), amb un usuari dedicat
 - API key d'Anthropic
 
 ### Instal·lació
@@ -43,11 +43,14 @@ npm start
 | `PORT` | Port del servidor | `3003` |
 | `ANTHROPIC_API_KEY` | Clau API Anthropic | `sk-ant-api03-...` |
 | `SESSION_SECRET` | Secret sessions | cadena llarga aleatòria |
-| `MYSQL_HOST` | Host MySQL | `db1.bwai.cc` |
-| `MYSQL_PORT` | Port MySQL | `3306` |
-| `MYSQL_USER` | Usuari MySQL | `dataagency` |
-| `MYSQL_PASSWORD` | Contrasenya MySQL | (credentials) |
-| `MYSQL_DATABASE` | Base de dades | `brandwaiapp` |
+| `DB_HOST` | Host MySQL dels usuaris | `db1.bwai.cc` |
+| `DB_PORT` | Port MySQL | `3306` |
+| `DB_USER` | Usuari MySQL | (un de dedicat, mai root) |
+| `DB_PASSWORD` | Contrasenya MySQL | (credentials) |
+| `DB_NAME` | Base de dades | `cronosai` |
+| `GOOGLE_CLIENT_ID` | Entrar amb Google (opcional) | del GCP `kairos-family-app` |
+| `GOOGLE_CLIENT_SECRET` | Entrar amb Google (opcional) | |
+| `GOOGLE_REDIRECT_URI` | Ha de coincidir amb el de la credencial | `https://dictation.generaive.io/auth/google/callback` |
 | `NODE_ENV` | Entorn | `production` |
 
 ## Arquitectura
@@ -55,7 +58,7 @@ npm start
 ```
 Browser → Caddy (dictation.generaive.io:443) → Express (localhost:3003)
                                                     ↓
-                                        MySQL brandwaiapp (auth)
+                                        MySQL cronosai (usuaris i sessions)
                                         SQLite data/dictats.db (progrés)
                                         Anthropic API (correcció)
 ```

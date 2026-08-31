@@ -57,10 +57,13 @@ dins l'original sigui exacta, que és tota la raó de ser de `src/lib/diff.js`.
 | `PORT` | Port del servidor (default: 3003) |
 | `ANTHROPIC_API_KEY` | Clau API d'Anthropic |
 | `SESSION_SECRET` | Secret per a sessions Express |
-| `MYSQL_HOST` | Host MySQL (brandwaiapp) |
-| `MYSQL_USER` | Usuari MySQL |
-| `MYSQL_PASSWORD` | Contrasenya MySQL |
-| `MYSQL_DATABASE` | Base de dades MySQL |
+| `DB_HOST` | Host MySQL dels usuaris (`db1.bwai.cc`) |
+| `DB_USER` | Usuari MySQL |
+| `DB_PASSWORD` | Contrasenya MySQL |
+| `DB_NAME` | Base de dades (`cronosai`) |
+| `GOOGLE_CLIENT_ID` | Entrar amb Google — **opcional** |
+| `GOOGLE_CLIENT_SECRET` | Entrar amb Google — **opcional** |
+| `GOOGLE_REDIRECT_URI` | Entrar amb Google — **opcional** |
 | `DICTATS_DB_PATH` | Ruta del SQLite (per defecte `<repo>/data/dictats.db`) |
 | `DICTATS_MODEL` | Model de Claude (per defecte `claude-opus-4-6`) |
 

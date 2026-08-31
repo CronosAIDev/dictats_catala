@@ -69,11 +69,21 @@ function crea(db) {
     if (await perEmail(correu)) throw new Error('Ja hi ha un compte amb aquest correu');
 
     const hash = await bcrypt.hash(contrasenya, RONDES);
-    const r = await run(
-      `INSERT INTO ${T} (email, password_hash, nombre) VALUES (?, ?, ?)`,
-      [correu, hash, nom || null]
-    );
-    return { id: r.insertId, email: correu, first_name: nom || null };
+    try {
+      const r = await run(
+        `INSERT INTO ${T} (email, password_hash, nombre) VALUES (?, ?, ?)`,
+        [correu, hash, nom || null]
+      );
+      return { id: r.insertId, email: correu, first_name: nom || null };
+    } catch (e) {
+      // Entre la comprovació d'amunt i aquest INSERT hi cap una altra alta amb
+      // el mateix correu —dues pestanyes, o un reintent després d'un timeout—.
+      // La clau única de la taula ho atura, però l'error del driver no és per
+      // ensenyar-lo: sense això, l'usuari rebia un 500 «Error intern» quan el
+      // que passa és que el correu ja hi és.
+      if (e && e.code === 'ER_DUP_ENTRY') throw new Error('Ja hi ha un compte amb aquest correu');
+      throw e;
+    }
   }
 
   async function perGoogleId(googleId) {

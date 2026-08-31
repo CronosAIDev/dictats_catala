@@ -95,6 +95,32 @@ function baseFalsa(files = []) {
     await llanca('correu repetit', () => u.crear({ email: 'A@B.cat', contrasenya: 'unaaltrabona' }), 'ja hi ha');
   }
 
+  console.log('\nLa carrera entre la comprovació i l\'INSERT:');
+  {
+    // Dues pestanyes, o un reintent després d'un timeout: la comprovació diu
+    // que el correu és lliure a totes dues i la clau única atura la segona.
+    // Sense tractar-ho, l'usuari rebia un 500 «Error intern».
+    const db = {
+      P: 'dictats_',
+      async get() { return null; },
+      async run(sql) {
+        if (/INSERT/.test(sql)) { const e = new Error('Duplicate entry'); e.code = 'ER_DUP_ENTRY'; throw e; }
+        return {};
+      },
+    };
+    await llanca('el duplicat de la base es tradueix a un missatge llegible',
+      () => crea(db).crear({ email: 'a@b.cat', contrasenya: 'unabonacontrasenya' }), 'ja hi ha un compte');
+
+    // Qualsevol altre error de base NO s'ha de disfressar de cosa de l'usuari.
+    const dbTrencada = {
+      P: 'dictats_',
+      async get() { return null; },
+      async run() { const e = new Error('ECONNREFUSED'); e.code = 'ECONNREFUSED'; throw e; },
+    };
+    await llanca('i un error de connexió es propaga tal qual',
+      () => crea(dbTrencada).crear({ email: 'a@b.cat', contrasenya: 'unabonacontrasenya' }), 'econnrefused');
+  }
+
   console.log('\nGoogle: la regla de vinculació (el fallo que més fa mal és duplicar la persona)');
   {
     const db = baseFalsa();
