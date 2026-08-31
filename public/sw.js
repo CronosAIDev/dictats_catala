@@ -16,7 +16,7 @@
 // que sigui instal·lable i per estalviar descàrregues d'estàtics, no per oferir
 // un mode fora de línia que no podria complir.
 
-const CACHE = 'dictats-estatics-v2';
+const CACHE = 'dictats-estatics-v3';
 
 const ESTATICS = [
   '/style.css',

@@ -46,6 +46,13 @@ app.use((req, res, next) => {
 app.use('/api', authRoutes);
 app.use('/api', dictatsRoutes);
 
+// La política de privacitat va servida per la mateixa app i **sense sessió**: Play
+// l'exigeix en una URL i qui encara no té compte l'ha de poder llegir abans de
+// fer-se'n un. És també la URL que va al formulari de Data Safety.
+app.get('/privacitat', (req, res) => {
+  res.sendFile(path.join(__dirname, '../public/privacitat.html'));
+});
+
 app.get('/login', (req, res) => {
   if (req.session?.profile) return res.redirect('/');
   res.sendFile(path.join(__dirname, '../public/login.html'));
