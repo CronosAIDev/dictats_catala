@@ -93,11 +93,19 @@
 - **Els comptes creats per Google no tenen contrasenya coneguda**: `password_hash` és
   `NOT NULL`, així que s'hi desa el hash d'un secret aleatori de 32 bytes que ningú té.
   El login per contrasenya no hi casarà mai mentre l'usuari no en posi una.
-- **Sense rate limit a `/api/correct` i `/api/correct-image`**: aquests endpoints criden
-  l'API d'Anthropic (cost per crida) i només estan protegits per `requireAuth` — un
-  usuari autenticat podria generar-hi trucades repetides sense límit. `loginLimiter`
-  només cobreix `/api/login`. **Risc de cost, no de seguretat de dades** — pendent
-  d'avaluar si cal limitar.
+- **Límits de crides a les rutes que costen diners** (`src/lib/limits.js`, F56): fins al
+  31-08-2026 `/api/correct` i `/api/correct-image` només estaven protegides per
+  `requireAuth`, i qui tingués sessió podia fer-ne les que volgués. Amb l'app tancada era
+  teòric; amb l'app a Play, no. Ara hi ha dues capes a cada ruta —ràfega per hora i sostre
+  diari—, més justes a la foto perquè hi viatja la imatge sencera. **És un sostre de
+  despesa, no una mesura de seguretat de dades.**
+- **Es compta per persona, no per IP**: el públic són docents, i una sala de professors
+  surt a internet per una sola IP. Comptar per IP faria que un docent es mengés el
+  bloqueig d'un company. La IP es queda de xarxa de seguretat per si algun dia es mou
+  l'ordre dels middlewares.
+- **Encara no hi ha sostre de despesa global.** Els límits són per persona; qui obri molts
+  comptes els multiplica. Decidir un límit total i què passa quan s'assoleix és part de la
+  Issue #22.
 - **CSP** (`helmet`, `src/index.js:16`): `'unsafe-inline'` a `scriptSrc`/`styleSrc`
   perquè l'app és vanilla JS/CSS sense build — acceptable per a una app petita sense
   contingut generat per usuaris que es renderitzi com HTML.
