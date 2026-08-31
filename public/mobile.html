@@ -13,6 +13,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="Dictats">
+  <script src="/report.js" defer></script>
   <script src="/pwa.js" defer></script>
   <style>
     body { background: var(--bg); }
@@ -622,7 +623,15 @@
               <span class="arrow">→</span>
               <span class="right">${escapeHtml(e.original || '(sobra)')}</span>
             </div>
-            <div class="error-explanation">${escapeHtml(e.explanation || '')}</div>
+            <div class="error-explanation">
+              <span>${escapeHtml(e.explanation || '')}</span>
+              ${window.Avisos ? window.Avisos.boto({
+                generada: e.generada,
+                kind: 'explicacio',
+                content: e.explanation,
+                context: `${e.type || ''}: ${e.original || ''} -> ${e.userWrote || ''}`,
+              }) : ''}
+            </div>
           </div>
         </div>`;
     }
@@ -758,7 +767,10 @@
         ? `<h3>Puntuació — no compta</h3><p class="warnings-note">No s'ha dictat, així que no baixa la teva escala.</p>${warnings.map(fitxaError).join('')}`
         : '';
 
-      $('m-feedback-box').textContent = c.feedback || '';
+      $('m-feedback-box').innerHTML = escapeHtml(c.feedback || '')
+        + (window.Avisos ? window.Avisos.boto({
+            generada: c.feedbackGenerat, kind: 'feedback', content: c.feedback,
+          }) : '');
       pintaRang(c.rank);
     }
 
