@@ -17,6 +17,7 @@
 | Text del dictat, puntuació, errors | SQLite `user_progress` i `user_errors` | `src/lib/db.js:27,47` |
 | Textos personals | SQLite `user_texts` | `src/lib/db.js:19` |
 | **Foto d'un dictat a mà** | **Enlloc.** `multer.memoryStorage()`: viu a memòria mentre dura la petició | `src/routes/dictats.js:12` |
+| Avisos sobre contingut d'IA | SQLite `content_reports`: text denunciat, motiu, correu, model | `src/lib/db.js` |
 | Galeta de sessió | Navegador, `httpOnly`, 8 h | `src/index.js` |
 | Preferències i esborrany | `localStorage` i `sessionStorage` del navegador. **No surten mai del dispositiu** | `public/app.js`, `public/mobile.html` |
 
@@ -112,9 +113,18 @@ El requisit que costa feina:
 > Les apps que generen contingut amb IA han d'incloure una manera de **reportar o marcar
 > contingut ofensiu des de dins de l'app**, sense haver-ne de sortir.
 
-**Avui l'app no en té cap.** És barat de fer —un botó a cada explicació— i evita un rebuig
-a la revisió. Queda com a feina; **no l'he feta en aquesta fase** perquè no és a la llista
-de la Issue i val més que consti que fer-la de tapadillo.
+**✅ Fet** (F64, 31-08-2026). Cada explicació escrita pel model i el missatge final porten
+un botó **⚑** que obre un diàleg i envia l'avís a `POST /api/report`, sense sortir de
+l'app. Els avisos es desen a la taula `content_reports` amb el text tal com el va veure la
+persona, el motiu, el model que el va escriure i la data.
+
+Dues decisions que consten:
+
+- **El botó només surt sobre text que ha escrit el model.** Quan l'API falla, les
+  explicacions són genèriques i les hem escrit nosaltres; oferir-ne el report embrutaria
+  els avisos amb coses que no són d'IA. El servidor ho marca amb `generada`.
+- **No s'amaga res automàticament.** Un toc sense voler faria desaparèixer una explicació
+  correcta, i l'app no té ningú de guàrdia. Es desa perquè algú ho miri.
 
 També: si algun element de la fitxa —captures, gràfic de capçalera (F62)— es genera amb IA,
 **s'ha de declarar** un per un.
@@ -176,7 +186,7 @@ determina si hi ha dues setmanes d'espera o no.
 | **Compte personal o d'organització** — determina si calen els 20 testers | Óscar |
 | **Reclutar 20 docents** i engegar els 14 dies | Óscar (jo no tinc l'agenda) |
 | Confirmar la identitat legal i el contacte de la política | Óscar |
-| Botó de report del contingut generat amb IA (§2) | Feina meva, per fer |
+| ~~Botó de report del contingut generat amb IA (§2)~~ | ✅ Fet (F64) |
 | Captures i gràfic de capçalera | Depèn del desplegament (#15) |
 | Que la política estigui **publicada de veritat** a `dictation.generaive.io/privacitat` | Depèn del desplegament (#15) |
 

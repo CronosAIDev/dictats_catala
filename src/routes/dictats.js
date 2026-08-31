@@ -1,5 +1,6 @@
 const express = require('express');
 const multer = require('multer');
+const rateLimit = require('express-rate-limit');
 const Anthropic = require('@anthropic-ai/sdk');
 const requireAuth = require('../middleware/requireAuth');
 const db = require('../lib/db');
@@ -164,6 +165,7 @@ function corregeix(originalText, userText, puntuacioDictada) {
 
 async function afegeixExplicacions(correccio) {
   const llista = correccio.errors.concat(correccio.warnings);
+  correccio.feedbackGenerat = false;
   if (!llista.length) {
     correccio.feedback = 'Cap error. Impecable!';
     return;
@@ -185,9 +187,16 @@ async function afegeixExplicacions(correccio) {
     const resposta = parseClaudeJSON(message.content[0].text);
     llista.forEach((e, i) => {
       const text = resposta.explicacions && resposta.explicacions[String(i)];
-      if (text) e.explanation = String(text);
+      // `generada` distingeix el que ha escrit el model del que hem escrit
+      // nosaltres. Ho necessita el botó de report (F64): Play demana poder
+      // denunciar el contingut generat amb IA, i oferir-ho sobre un text
+      // nostre embrutaria els avisos amb coses que no són d'IA.
+      if (text) { e.explanation = String(text); e.generada = true; }
     });
-    if (resposta.feedback) correccio.feedback = String(resposta.feedback);
+    if (resposta.feedback) {
+      correccio.feedback = String(resposta.feedback);
+      correccio.feedbackGenerat = true;
+    }
   } catch (err) {
     console.error('Claude API error:', err.status, err.message);
   }
@@ -348,6 +357,52 @@ router.get('/progress', requireAuth, (req, res) => {
     FROM user_progress WHERE email = ? ORDER BY completed_at DESC LIMIT 20
   `).all(req.session.profile.email);
   res.json(rows);
+});
+
+// ── Avisar sobre el contingut que escriu el model (F64) ──────
+//
+// Google Play tracta les apps que generen contingut amb IA com una àrea
+// regulada i exigeix que es pugui denunciar contingut ofensiu **sense sortir
+// de l'app**. A Dictats el model escriu l'explicació de cada error i el
+// missatge final; això és la via.
+//
+// No modera res automàticament ni amaga el text: el desa perquè algú el miri.
+// Amagar-lo tot sol seria pitjor —una explicació correcta desapareixeria per
+// un toc sense voler— i l'app no té ningú de guàrdia.
+const MAX_REPORT = 2000;
+
+const limitReports = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 20,
+  message: { error: 'Has enviat molts avisos seguits. Torna-ho a provar més tard.' },
+});
+
+router.post('/report', requireAuth, limitReports, (req, res) => {
+  const { kind, content, context, reason } = req.body || {};
+  if (!content || typeof content !== 'string') {
+    return res.status(400).json({ error: 'Falta el text que vols avisar' });
+  }
+  if (kind !== 'explicacio' && kind !== 'feedback') {
+    return res.status(400).json({ error: 'Tipus d\'avís desconegut' });
+  }
+
+  try {
+    db.prepare(
+      `INSERT INTO content_reports (email, kind, content, context, reason, model)
+       VALUES (?, ?, ?, ?, ?, ?)`
+    ).run(
+      req.session.profile.email,
+      kind,
+      String(content).slice(0, MAX_REPORT),
+      context ? String(context).slice(0, 500) : null,
+      reason ? String(reason).slice(0, MAX_REPORT) : null,
+      MODEL,
+    );
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('report error:', err.message);
+    res.status(500).json({ error: 'No s\'ha pogut enviar l\'avís. Torna-ho a provar.' });
+  }
 });
 
 module.exports = router;

@@ -772,3 +772,23 @@ body {
   vertical-align: top;
 }
 .taula-legal th { color: var(--text-muted); font-weight: 600; font-size: 0.8125rem; }
+
+/* Avisar sobre el contingut que escriu el model (F64).
+   Discret: no ha de competir amb l'explicació, que és el que s'ha de llegir. */
+.btn-avis {
+  background: none;
+  border: none;
+  padding: 0 4px;
+  margin-left: 6px;
+  cursor: pointer;
+  color: var(--text-muted);
+  opacity: .45;
+  font-size: .8125rem;
+  line-height: 1;
+  transition: opacity .15s, color .15s;
+}
+.btn-avis:hover:not(:disabled) { opacity: 1; color: var(--error); }
+.btn-avis:focus-visible { opacity: 1; outline: 2px solid var(--primary); outline-offset: 2px; }
+.btn-avis.enviat { opacity: 1; color: var(--success); cursor: default; }
+.error-explanation { display: flex; align-items: baseline; gap: 2px; }
+.error-explanation > span { flex: 1; }
