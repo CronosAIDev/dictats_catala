@@ -35,7 +35,7 @@
 
 | ID | Feature | Descripción | Estado | Asignado a |
 |----|---------|-------------|--------|------------|
-| F16 | Dictats en Google Play | [Gameplan](../sections/publicacio/GP_dictats_a_google_play.md) — PWA → TWA → ficha de Play. Bloqueado en Fase 0: decidir quién puede usar la app (hoy el login va contra la tabla de clientes de Trawlingweb) | En curso | gerard |
+| F51 | Dictats en Google Play | [Gameplan](../sections/publicacio/GP_dictats_a_google_play.md) — PWA → TWA → ficha de Play. Fase 1 (PWA) ya hecha: es F10, de v5. Fase 0 decidida el 30-08 (identidad propia, calcando `aicamper_app`), así que ya no bloquea. Pendientes: Fase 0 como trabajo, Fases 2, 3, 4 y las dos revisiones (F54, F55) | En curso | gerard |
 
 ## Pendiente
 
@@ -118,6 +118,19 @@ Aquí está la diferencia entre lo que la app es y lo que dice el objetivo.
 | F49 | El botón «Sortir» de `/profile` no hace nada en una cuenta nueva | `init()` hace `return` cuando el historial está vacío, antes de registrar el listener de `btn-logout` (`public/profile.html`). Anterior a v6; se arregla moviendo el listener arriba | Pendiente | Media |
 | F50 | La barra del rango sale vacía cuando el margen te protege | Con 473 puntos y rango Manilles (umbral 500), el margen anti-yoyó mantiene el rango pero `progres` sale negativo y se dibuja al 0 %: se lee como si estuviera roto. Además desaprovecha la tensión — decir «estàs 27 punts per sota de Manilles» aprieta más que una barra muda | Pendiente | Media |
 
+### Bloque G — Publicación en Google Play (gameplan F51)
+
+Salen del gameplan `GP_dictats_a_google_play.md` y de sus Issues en `CronosAIDev/wiki-cronos`.
+Aquí solo lo que es trabajo de código; las decisiones y la ficha de Play viven en las Issues.
+
+| ID | Feature | Descripción | Estado | Prioridad |
+|----|---------|-------------|--------|-----------|
+| F52 | Identidad propia de Dictats (Fase 0) | Tabla `dictats_usuarios` en `cronosai`, bcrypt, Google OAuth sobre `kairos-family-app` y sesiones en MySQL (`express-mysql-session`), calcando `aicamper_app`. Retira la dependencia de `BrandWaiUserProfile` y con ella las contraseñas en texto plano. El progreso se queda en SQLite, indexado por email, así que el histórico no se pierde. [Issue #16](https://github.com/CronosAIDev/wiki-cronos/issues/16) | Pendiente | Alta |
+| F53 | `/.well-known/assetlinks.json` no se sirve (Fase 2) | Verificado ejecutando: el fichero da **404** aunque `express.static` esté antes de cualquier `requireAuth`. La causa no es la sesión, es que Express ignora los directorios que empiezan por punto (`dotfiles: 'ignore'`). Sin esto el TWA se instala y abre **con la barra de Chrome encima, sin dar ningún error**. `{ dotfiles: 'allow' }` o una ruta explícita. [Issue #18](https://github.com/CronosAIDev/wiki-cronos/issues/18) | Pendiente | Alta |
+| F54 | ¿La app funciona hoy? (Fase R) | Siete caminos por verificar **ejecutando**: login, dictado por voz, corrección por texto, corrección por foto, textos personales, perfil y vista móvil. La llamada a Claude no se ejecuta con éxito desde el 24-03. v6 hizo que la corrección sobreviva a un fallo de la API, pero eso no la sustituye. [Issue #21](https://github.com/CronosAIDev/wiki-cronos/issues/21) | Pendiente | Alta |
+| F55 | Banco de pruebas de modelos y coste por corrección (Fase R) | Errores inyectados por clase (acento abierto/cerrado, ela geminada, apostrofació, dièresi, pronoms febles, b/v) sobre los textos del banco: el ground truth sale gratis porque el texto correcto ya lo tenemos. Mide recall, falsos positivos, acierto de clasificación, JSON válido, latencia y **coste real** del campo `usage`. Los falsos positivos pesan más: enseñan ortografía equivocada. La elección de modelo es de Óscar. Ya no hace falta tocar código para probar: `DICTATS_MODEL` lo escoge (v6). [Issue #22](https://github.com/CronosAIDev/wiki-cronos/issues/22) | Pendiente | Alta |
+| F56 | Rate limit en las rutas de corrección | Hoy solo las protege `requireAuth`. Con la app cerrada es teórico; en Play, no. Concreta F14 | Pendiente | Media |
+
 ### Otros (anteriores a la revisión)
 
 | ID | Feature | Descripción | Estado | Prioridad |
@@ -136,3 +149,13 @@ Aquí está la diferencia entre lo que la app es y lo que dice el objetivo.
 | **v7** | F25–F28, F32 | La app empieza a entrenar: sabe de qué son tus errores, te dice dónde fallas, te devuelve las frases falladas a los pocos días y te deja practicar un minuto |
 | **v8** | F29, F30, F33–F37 | Se entrena gramática produciendo texto propio, cada error trae su regla, y el progreso se ve en una curva comparable consigo misma |
 | cuando toque | F38–F44 | Modo oscuro, accesibilidad, buscador, la pantalla que no se apaga |
+
+> ⚠️ **Publicar va antes que v7.** El gameplan F51 manda sobre este plan: hasta que Dictats
+> esté en Play, entra primero el bloque G (F52–F56). v7 y v8 siguen siendo el rumbo del
+> producto, pero esperan.
+
+> ℹ️ **Las versiones de este plan no son los nombres de las ramas.** Desde el 29-08 `origin`
+> tiene `v5`…`v9` con los documentos del gameplan de Óscar, que no son las `v5`/`v6` de
+> producto de esta tabla. El trabajo de producto reconciliado vive en la rama **`v10`**;
+> las ramas locales anteriores se conservan como `v5-gerard-pre-reconciliacio` y
+> `v6-gerard-pre-reconciliacio`, más los tags `reconciliacio-backup-v5` y `-v6`.
