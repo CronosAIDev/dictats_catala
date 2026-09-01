@@ -54,6 +54,24 @@ comprova('i no s' + AP + 'inventa cap paraula de més', 0,
   compara('A l' + AP + 'estiu el sol escalfa', 'A el estiu el sol escalfa')
     .errors.filter(e => e.type === 'paraula afegida').length);
 
+// Regressió del banc de proves (F57): amb dos apòstrofs seguits l'aparellament
+// per ordre es desplaça — cada paraula apostrofada consumia una sola paraula
+// escrita i tot el que venia després quedava corregut: es reportaven dos errors
+// de més i el text ensenyat sortia desplaçat. Falla contra la versió d'abans.
+console.log('\nApostrofació — dos apòstrofs seguits (F57):');
+comprova('«L' + AP + 'oli d' + AP + 'oliva» escrit «El oli de oliva»',
+  [[0, 1, 'apostrofació'], [1, 1, 'apostrofació']],
+  resum('L' + AP + 'oli d' + AP + 'oliva és bo', 'El oli de oliva és bo'));
+comprova('i no s' + AP + 'inventa cap paraula de més', 0,
+  compara('L' + AP + 'oli d' + AP + 'oliva és bo', 'El oli de oliva és bo')
+    .errors.filter(e => e.type === 'paraula afegida').length);
+comprova('tres seguits tampoc es desmunten',
+  [[1, 1, 'apostrofació'], [2, 1, 'apostrofació'], [3, 1, 'apostrofació']],
+  resum('Beu l' + AP + 'aigua d' + AP + 'aquí s' + AP + 'ha dit', 'Beu la aigua de aquí se ha dit'));
+comprova('un de bé enmig de dos de malament no es toca',
+  [[0, 1, 'apostrofació'], [2, 1, 'apostrofació']],
+  resum('L' + AP + 'home l' + AP + 'aigua l' + AP + 'oli', 'El home l' + AP + 'aigua el oli'));
+
 comprova('dues paraules afegides de debò no es fusionen',
   [[null, 1, 'paraula afegida'], [null, 1, 'paraula afegida']],
   resum('La casa és gran', 'La casa és molt molt gran'));

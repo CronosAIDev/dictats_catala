@@ -139,70 +139,100 @@ function alinea(originals, escrites) {
 // com dues coses —una substitució i una paraula afegida— i comptar-lo com dos
 // errors infla l'escala injustament, perquè per a qui practica és una sola
 // regla. Aquí es tornen a ajuntar.
+//
+// La versió d'abans cosia PARELLES d'elements veïns, i amb dos apòstrofs
+// seguits fallava (F57): l'aparellament per ordre de `buida` es desplaça una
+// posició per cada apòstrof («L'oli d'oliva» escrit «El oli de oliva» dona
+// L'oli↔El i d'oliva↔oli, més dues paraules de més), i cap parella local ho
+// pot recompondre. Per això ara es treballa per TANDES: es reagafen totes les
+// paraules d'un tram de diferències veïnes i es tornen a aparellar deixant que
+// cada paraula apostrofada consumeixi les dues que li toquen.
 function ajuntaApostrofs(diferencies) {
-  const APOSTROFS = /['\u2019]/;
+  const APOSTROFS = /['’]/;
   const fusionades = [];
-  for (let k = 0; k < diferencies.length; k++) {
-    const d = diferencies[k];
-    const seguent = diferencies[k + 1];
-    const partit = d.original && d.escrit && seguent
-      && seguent.original === null && seguent.escrit !== null
-      && APOSTROFS.test(d.original);
-    if (partit) {
-      const senseApostrof = clau(d.original.replace(APOSTROFS, ''));
-      const ajuntat = clau(d.escrit + seguent.escrit);
-      if (distancia(senseApostrof, ajuntat) <= 2) {
-        fusionades.push({ pos: d.pos, original: d.original, escrit: `${d.escrit} ${seguent.escrit}` });
-        k++;
-        continue;
-      }
+  let k = 0;
+  while (k < diferencies.length) {
+    // Delimita la tanda: elements consecutius de l'array que també són veïns
+    // al text. Les afegides (pos null) pertanyen al tram on apareixen; un salt
+    // de posició de més de 2 tanca la tanda (una àncora encertada entremig,
+    // com al cas «A l'estiu el sol», encara compta com a veí). Sense aquest
+    // tall es fusionarien paraules de trams allunyats del text.
+    let fi = k;
+    let ultimaPos = null;
+    while (fi < diferencies.length) {
+      const p = diferencies[fi].pos;
+      if (p !== null && ultimaPos !== null && p > ultimaPos + 2) break;
+      if (p !== null) ultimaPos = p;
+      fi++;
     }
 
-    // Tercer cas, i el que menys es veu venir: l'alineació ha decidit que la
-    // paraula apostrofada no hi és i que sobren dues paraules soltes. Passa quan
-    // la partició genera una paraula que ja existeix a prop a l'original i
-    // l'àncora se l'endú — «A l'estiu el sol...» escrit «A el estiu el sol...»:
-    // l'«el» de l'alumne s'ancora amb l'«el» de després i queda l'apòstrof
-    // convertit en una omissió més dues paraules de més. Per a qui escriu és
-    // una sola falta d'apòstrof, i comptar-li'n tres és exactament el que F31
-    // havia d'eliminar.
-    const tercera = diferencies[k + 2];
-    const esberlat = d.original && d.escrit === null && APOSTROFS.test(d.original)
-      && seguent && seguent.original === null && seguent.escrit !== null
-      && tercera && tercera.original === null && tercera.escrit !== null;
-    if (esberlat) {
-      const senseApostrof = clau(d.original.replace(APOSTROFS, ''));
-      // L'ordre en què queden les dues paraules afegides depèn de quina se
-      // n'ha endut l'àncora, així que es proven les dues combinacions.
-      const endavant = clau(seguent.escrit + tercera.escrit);
-      const enrere = clau(tercera.escrit + seguent.escrit);
-      const millor = distancia(senseApostrof, endavant) <= distancia(senseApostrof, enrere)
-        ? { text: `${seguent.escrit} ${tercera.escrit}`, d: distancia(senseApostrof, endavant) }
-        : { text: `${tercera.escrit} ${seguent.escrit}`, d: distancia(senseApostrof, enrere) };
-      if (millor.d <= 2) {
-        fusionades.push({ pos: d.pos, original: d.original, escrit: millor.text });
-        k += 2;
-        continue;
-      }
+    // Les paraules de la tanda, en l'ordre del text: `buida` emet cada tram
+    // amb les substitucions primer i les sobrants després, totes dues llistes
+    // en ordre, així que reagafar-les deixa cada banda ben ordenada.
+    const originals = [];
+    const escrites = [];
+    for (let m = k; m < fi; m++) {
+      const d = diferencies[m];
+      if (d.original !== null) originals.push({ pos: d.pos, text: d.original });
+      if (d.escrit !== null) escrites.push(d.escrit);
     }
 
-    // El mateix a l'inrevés: l'original són dues paraules i l'alumne les ha
-    // ajuntat amb apòstrof.
-    const ajuntat = d.original && d.escrit && seguent
-      && seguent.escrit === null && seguent.original !== null
-      && APOSTROFS.test(d.escrit);
-    if (ajuntat) {
-      const senseApostrof = clau(d.escrit.replace(APOSTROFS, ''));
-      const separat = clau(d.original + seguent.original);
-      if (distancia(senseApostrof, separat) <= 2) {
-        // Abasta dues paraules de l'original: el marcador les ha de pintar
-        // totes dues, o en deixaria una en verd havent fallat.
-        fusionades.push({ pos: d.pos, abasta: 2, original: `${d.original} ${seguent.original}`, escrit: d.escrit });
-        k++;
-        continue;
+    // Reaparella: 1↔1 com sempre, però una paraula amb apòstrof pot consumir
+    // dues de l'altra banda si el resultat s'assembla més que el d'una sola.
+    let i = 0;
+    let j = 0;
+    while (i < originals.length || j < escrites.length) {
+      const o = originals[i];
+      const e = escrites[j];
+      if (o && e !== undefined) {
+        if (APOSTROFS.test(o.text) && j + 1 < escrites.length) {
+          const sense = clau(o.text.replace(APOSTROFS, ''));
+          const dSol = distancia(sense, clau(e));
+          // Amb més paraules escrites que originals a la tanda, si no es
+          // fusiona el sobrant es filtra com a «paraula afegida»: el llindar
+          // es relaxa. I es prova també l'ordre invers, perquè quan la
+          // partició xoca amb una paraula que ja hi és («A l'estiu el sol»
+          // escrit «A el estiu el sol») l'àncora se n'endú una i les dues
+          // sobrants queden girades.
+          const sobren = escrites.length - j > originals.length - i;
+          const dJunt = distancia(sense, clau(e + escrites[j + 1]));
+          const dGirat = distancia(sense, clau(escrites[j + 1] + e));
+          const millor = dJunt <= dGirat
+            ? { d: dJunt, text: `${e} ${escrites[j + 1]}` }
+            : { d: dGirat, text: `${escrites[j + 1]} ${e}` };
+          if (millor.d <= 2 && (millor.d < dSol || sobren)) {
+            fusionades.push({ pos: o.pos, original: o.text, escrit: millor.text });
+            i++;
+            j += 2;
+            continue;
+          }
+        }
+        // El mateix a l'inrevés: l'original són dues paraules i l'alumne les
+        // ha ajuntat amb apòstrof. Abasta dues paraules de l'original: el
+        // marcador les ha de pintar totes dues, o en deixaria una en verd
+        // havent fallat.
+        if (APOSTROFS.test(e) && i + 1 < originals.length) {
+          const sense = clau(e.replace(APOSTROFS, ''));
+          const dJunt = distancia(sense, clau(o.text + originals[i + 1].text));
+          if (dJunt <= 2 && dJunt < distancia(sense, clau(o.text))) {
+            fusionades.push({ pos: o.pos, abasta: 2, original: `${o.text} ${originals[i + 1].text}`, escrit: e });
+            i += 2;
+            j++;
+            continue;
+          }
+        }
+        if (o.text !== e) fusionades.push({ pos: o.pos, original: o.text, escrit: e });
+        i++;
+        j++;
+      } else if (o) {
+        fusionades.push({ pos: o.pos, original: o.text, escrit: null });
+        i++;
+      } else {
+        fusionades.push({ pos: null, original: null, escrit: e });
+        j++;
       }
     }
-    fusionades.push(d);
+    k = fi;
   }
   return fusionades;
 }
