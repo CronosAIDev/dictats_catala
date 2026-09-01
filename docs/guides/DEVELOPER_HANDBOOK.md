@@ -153,6 +153,36 @@ Dues coses que costen hores si no es saben:
 > rols `roles/compute.osLogin`/`compute.instanceAdmin.v1` + `iam.serviceAccountUser`
 > sobre la SA de la VM — mai se li passa aquesta.
 
+#### Devs amb SA pròpia (verificat el 2026-08-26)
+
+| Dev | Compte | Clau, on viu de veritat |
+|---|---|---|
+| Óscar | `otc-dev@kairos-family-app` | `~/.ssh/otc-dev.json` (Windows) |
+| Gerard | `gerard-dev@kairos-family-app` | **`~/Documentos/gerard-dev.json`** (Linux) |
+
+La clau de Gerard **no** és a `~/.ssh/`, que és on la busca tota la documentació. Si un
+script no la troba, mira-ho aquí abans de donar l'accés per perdut. `deploy-dictats.sh`
+ja porta la cuenta parametritzada:
+
+```bash
+gcloud auth activate-service-account --key-file=~/Documentos/gerard-dev.json
+ACCOUNT=gerard-dev@kairos-family-app.iam.gserviceaccount.com \
+  bash scripts/deploy/deploy-dictats.sh
+```
+
+L'accés **no** va per OS Login (`enable-oslogin` no està activat ni al projecte ni a la
+instància): va per la metadata `ssh-keys` **del projecte**, on `gcloud` publica la teva
+clau pública el primer cop. Cada dev entra amb **el seu propi usuari** (`gerard` és a
+`google-sudoers`, sudo sense contrasenya). Les apps corren sota `oscar`: per veure-les,
+`sudo -u oscar pm2 list`. Connectar-se com `oscar@kairos-vm` també funciona, però deixa
+la teva clau publicada sota l'usuari d'un altre i et deixa sense traçabilitat a l'audit
+log — no ho facis.
+
+> ⚠️ Les credencials **mai** dins de l'arbre del repo. El `.gitignore` cobreix
+> `*-dev.json`, `*-sa.json`, `credentials*.json`, `*.pem` i `*.p12` des del 2026-08-26,
+> arran d'una còpia de `gerard-dev.json` que va aparèixer a `docs/shell/` i no es va
+> arribar a commitejar per poc.
+
 Detall complet i rationale: `wiki-cronos/docs/acceso_kairos_vm.md`
 (`C:\Users\oscar\Dev\Cronos\wiki-cronos\docs\acceso_kairos_vm.md`) — mètode d'accés a
 `kairos-vm` propi de Cronos. **No enllaçar a la wiki de Trawlingweb**: aquest repo és

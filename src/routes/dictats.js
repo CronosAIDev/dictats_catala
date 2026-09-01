@@ -3,11 +3,19 @@ const multer = require('multer');
 const Anthropic = require('@anthropic-ai/sdk');
 const requireAuth = require('../middleware/requireAuth');
 const db = require('../lib/db');
+const { compara } = require('../lib/diff');
+const rang = require('../lib/rang');
 const texts = require('../../data/texts');
 
 const router = express.Router();
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
+
+// El model surt de l'entorn per no haver de tocar codi el dia que es canviï.
+// Des que la comparació es fa aquí (F31), a Claude només li queda explicar, que
+// és feina que cabria en un model més petit i més barat — però quin model s'hi
+// posa és una decisió del projecte, no d'aquest fitxer.
+const MODEL = process.env.DICTATS_MODEL || 'claude-opus-4-6';
 
 // ── Escala motivadora ────────────────────────────────────────
 function getScale(errorsCount) {
@@ -70,37 +78,36 @@ router.delete('/user-texts/:id', requireAuth, (req, res) => {
   res.json({ ok: true });
 });
 
-// ── Correcció text ───────────────────────────────────────────
-const CORRECTION_PROMPT = (cleanOriginal, userText) => `Ets un professor de català expert en ortografia. L'alumne ha fet un dictado i has de corregir-lo.
+// ── Correcció ────────────────────────────────────────────────
+//
+// L'ordre importa i és el canvi de fons d'aquesta versió:
+//   1. La comparació es fa aquí, amb un algorisme, i és exacta.
+//   2. Claude només escriu les explicacions.
+// Si el pas 2 falla, el dictat es corregeix igual. Abans, un error de l'API
+// deixava l'alumne sense correcció.
 
-TEXT ORIGINAL (correcte):
-"${cleanOriginal}"
+const EXPLICACIONS_PER_DEFECTE = {
+  'apostrofació': 'Revisa l\'apòstrof: davant de vocal, l\'article i els pronoms s\'apostrofen.',
+  'accentuació': 'Revisa l\'accent d\'aquesta paraula.',
+  'majúscules': 'Revisa la majúscula.',
+  'puntuació': 'Revisa el signe de puntuació.',
+  'ortografia': 'Revisa com s\'escriu aquesta paraula.',
+  'paraula incorrecta': 'Aquesta no és la paraula del dictat.',
+  'paraula omesa': 'Aquesta paraula no s\'ha escrit.',
+  'paraula afegida': 'Aquesta paraula no era al dictat.',
+};
 
-TEXT DE L'ALUMNE:
-"${userText}"
+const PROMPT_EXPLICACIONS = (diferencies) => `Ets un professor de català.
 
-La teva tasca:
-1. Compara el text de l'alumne amb l'original i identifica TOTES les diferències.
-2. Classifica cada error com: ortografia, accentuació, puntuació, paraula incorrecta, paraula omesa, o paraula afegida.
-3. Retorna un JSON estrictament amb aquest format:
+Un alumne ha fet un dictat i la comparació amb el text original ja està feta, paraula per paraula. NO l'has de refer ni discutir: dona-la per bona.
 
-{
-  "score": <número del 0 al 100>,
-  "totalWords": <nombre total de paraules de l'original>,
-  "correctWords": <nombre de paraules correctes>,
-  "errors": [
-    {
-      "position": <índex de la paraula (0-based)>,
-      "original": <paraula original correcte>,
-      "userWrote": <el que ha escrit l'alumne>,
-      "type": <"ortografia" | "accentuació" | "puntuació" | "paraula incorrecta" | "paraula omesa" | "paraula afegida">,
-      "explanation": <breu explicació en català>
-    }
-  ],
-  "feedback": <missatge de retroalimentació en català, màxim 2 frases, animant l'alumne>
-}
+La teva única feina és, per a cada diferència, escriure una explicació breu en català (màxim 15 paraules) que digui quina regla s'ha vulnerat i com es recorda. Escriu també un missatge final d'ànim de dues frases com a màxim.
 
-Retorna NOMÉS el JSON, sense cap altre text.`;
+DIFERÈNCIES:
+${JSON.stringify(diferencies)}
+
+Retorna NOMÉS aquest JSON, sense cap altre text:
+{"explicacions": {"0": "...", "1": "..."}, "feedback": "..."}`;
 
 function parseClaudeJSON(responseText) {
   try { return JSON.parse(responseText.trim()); }
@@ -111,108 +118,201 @@ function parseClaudeJSON(responseText) {
   }
 }
 
-router.post('/correct', requireAuth, async (req, res) => {
-  const { originalText, userText, level, textId, textTitle } = req.body;
-  if (!originalText || !userText) return res.status(400).json({ error: 'Falten dades' });
+// L'alineació és O(n*m) i reserva una matriu de (n+1)*(m+1). Amb el límit
+// de 100 kB del body, un text de milers de paraules reservaria centenars de
+// megues i bloquejaria el bucle d'esdeveniments. Cap dictat real s'hi acosta.
+const MAX_PARAULES = 3000;
 
-  const cleanOriginal = originalText.replace(/\|\|/g, '').replace(/\s+/g, ' ').trim();
+// La puntuació arriba com a booleà pel JSON i com a text pel FormData de la foto.
+function volPuntuacio(valor) {
+  return valor === true || valor === 'true' || valor === '1';
+}
+
+function massaLlarg(text) {
+  return String(text || '').split(/\s+/).length > MAX_PARAULES;
+}
+
+function corregeix(originalText, userText, puntuacioDictada) {
+  const { paraules, errors } = compara(originalText, userText);
+
+  // Si la puntuació no s'ha dictat, no es pot penalitzar el que no s'ha pogut
+  // sentir. Es continua mostrant i desant, però com a avís: fora de l'escala.
+  const compten = errors.filter(e => puntuacioDictada || e.type !== 'puntuació');
+  const avisos = puntuacioDictada ? [] : errors.filter(e => e.type === 'puntuació');
+
+  // Una paraula afegida no ocupa cap posició de l'original, així que no pot
+  // restar de `correctWords`. Si no se sumen al denominador, escriure sis
+  // paraules on n'hi havia tres donava «3 de 3 correctes» amb 3 errors i un
+  // 100 de puntuació.
+  const fallades = new Set(compten.map(e => e.position).filter(p => p !== null));
+  const afegides = compten.filter(e => e.position === null).length;
+  const totalWords = paraules.length;
+  const correctWords = Math.max(0, totalWords - fallades.size);
+  const base = totalWords + afegides;
+
+  return {
+    totalWords,
+    correctWords,
+    score: base ? Math.round((correctWords / base) * 100) : 0,
+    errors: compten,
+    warnings: avisos,
+    scale: getScale(compten.length),
+    feedback: '',
+    punctuationDictated: !!puntuacioDictada,
+  };
+}
+
+async function afegeixExplicacions(correccio) {
+  const llista = correccio.errors.concat(correccio.warnings);
+  if (!llista.length) {
+    correccio.feedback = 'Cap error. Impecable!';
+    return;
+  }
+
+  const diferencies = llista.map((e, i) => ({
+    id: i,
+    correcte: e.original,
+    escrit: e.userWrote,
+    tipus: e.type,
+  }));
 
   try {
     const message = await anthropic.messages.create({
-      model: 'claude-opus-4-6',
+      model: MODEL,
       max_tokens: 4096,
-      messages: [{ role: 'user', content: CORRECTION_PROMPT(cleanOriginal, userText) }],
+      messages: [{ role: 'user', content: PROMPT_EXPLICACIONS(diferencies) }],
     });
-
-    const correction = parseClaudeJSON(message.content[0].text);
-    const scale = getScale(correction.errors?.length || 0);
-    correction.scale = scale;
-
-    try {
-      db.prepare(`
-        INSERT INTO user_progress (email, text_id, text_title, level, score, errors_count)
-        VALUES (?, ?, ?, ?, ?, ?)
-      `).run(req.session.profile.email, textId || 'unknown', textTitle || '', level || 'unknown', correction.score, correction.errors?.length || 0);
-    } catch (dbErr) { console.error('DB error:', dbErr.message); }
-
-    res.json(correction);
+    const resposta = parseClaudeJSON(message.content[0].text);
+    llista.forEach((e, i) => {
+      const text = resposta.explicacions && resposta.explicacions[String(i)];
+      if (text) e.explanation = String(text);
+    });
+    if (resposta.feedback) correccio.feedback = String(resposta.feedback);
   } catch (err) {
     console.error('Claude API error:', err.status, err.message);
-    res.status(500).json({ error: 'Error en la correcció. Torna a provar.' });
   }
+
+  // El que no hagi arribat —perquè l'API ha fallat, o perquè el model s'ha
+  // deixat una entrada— es completa aquí. Val més una explicació genèrica que
+  // un error mut.
+  llista.forEach((e) => {
+    if (!e.explanation) e.explanation = EXPLICACIONS_PER_DEFECTE[e.type] || '';
+  });
+  if (!correccio.feedback) correccio.feedback = correccio.scale.sub;
+}
+
+// Els punts i el rang no es desen: es recalculen recorrent l'historial. Val
+// una consulta més, i a canvi el dia que s'afini la fórmula tothom queda
+// recol·locat sol, sense migracions ni comptadors desincronitzats.
+function estatDeRang(email) {
+  const historial = db.prepare(`
+    SELECT level, total_words AS totalWords, errors_count AS errors
+    FROM user_progress WHERE email = ? ORDER BY completed_at ASC, id ASC
+  `).all(email);
+  return rang.estat(historial);
+}
+
+function desa(email, correccio, { level, textId, textTitle }) {
+  try {
+    const resultat = db.prepare(`
+      INSERT INTO user_progress (email, text_id, text_title, level, score, errors_count, total_words)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `).run(email, textId || 'unknown', textTitle || '', level || 'unknown', correccio.score, correccio.errors.length, correccio.totalWords);
+
+    const progressId = resultat.lastInsertRowid;
+    const insereix = db.prepare(`
+      INSERT INTO user_errors (progress_id, email, level, text_id, type, original, user_wrote, position, counted)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+    const fila = (e, counted) => [
+      progressId, email, level || 'unknown', textId || 'unknown',
+      e.type, e.original, e.userWrote, e.position, counted,
+    ];
+    const desaTots = db.transaction((files) => { for (const f of files) insereix.run(...f); });
+    desaTots([
+      ...correccio.errors.map(e => fila(e, 1)),
+      ...correccio.warnings.map(e => fila(e, 0)),
+    ]);
+  } catch (dbErr) {
+    console.error('DB error:', dbErr.message);
+  }
+}
+
+router.post('/correct', requireAuth, async (req, res) => {
+  const { originalText, userText, level, textId, textTitle, punctuationDictated } = req.body;
+  if (!originalText || !userText) return res.status(400).json({ error: 'Falten dades' });
+
+  if (massaLlarg(originalText) || massaLlarg(userText)) {
+    return res.status(413).json({ error: `El text és massa llarg. El màxim són ${MAX_PARAULES} paraules.` });
+  }
+
+  const correccio = corregeix(originalText, userText, volPuntuacio(punctuationDictated));
+  await afegeixExplicacions(correccio);
+  desa(req.session.profile.email, correccio, { level, textId, textTitle });
+  correccio.rank = estatDeRang(req.session.profile.email);
+  res.json(correccio);
 });
 
 // ── Correcció per foto ───────────────────────────────────────
+// La visió transcriu i prou. Comparar la transcripció amb l'original és la
+// mateixa feina d'abans i es fa amb el mateix algorisme, així que les
+// posicions també són exactes aquí.
+
+const PROMPT_TRANSCRIPCIO = `A la imatge hi ha un dictat en català escrit a mà.
+
+Transcriu EXACTAMENT el que hi veus, respectant l'ortografia, els accents, les majúscules i la puntuació tal com estan escrits, encara que hi hagi errors. No corregeixis absolutament res: si hi ha una falta, transcriu la falta.
+
+Retorna NOMÉS aquest JSON, sense cap altre text:
+{"transcription": "<el text transcrit>"}`;
+
 router.post('/correct-image', requireAuth, upload.single('photo'), async (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'Cal adjuntar una foto' });
-  const { originalText, level, textId, textTitle } = req.body;
+  const { originalText, level, textId, textTitle, punctuationDictated } = req.body;
   if (!originalText) return res.status(400).json({ error: 'Falta el text original' });
+  if (massaLlarg(originalText)) {
+    return res.status(413).json({ error: `El text és massa llarg. El màxim són ${MAX_PARAULES} paraules.` });
+  }
 
-  const cleanOriginal = originalText.replace(/\|\|/g, '').replace(/\s+/g, ' ').trim();
-  const imageBase64 = req.file.buffer.toString('base64');
-  const mediaType = req.file.mimetype || 'image/jpeg';
-
-  const prompt = `Ets un professor de català expert en ortografia.
-
-TEXT ORIGINAL (correcte):
-"${cleanOriginal}"
-
-L'alumne ha escrit el dictado a mà en paper. A la imatge pots veure el que ha escrit.
-
-La teva tasca:
-1. Transcriu exactament el que veies escrit a la imatge (camp "transcription").
-2. Compara la transcripció amb el TEXT ORIGINAL i identifica TOTES les diferències.
-3. Classifica cada error com: ortografia, accentuació, puntuació, paraula incorrecta, paraula omesa, o paraula afegida.
-4. Retorna un JSON amb aquest format:
-
-{
-  "transcription": <text transcrit de la imatge>,
-  "score": <número del 0 al 100>,
-  "totalWords": <nombre total de paraules de l'original>,
-  "correctWords": <nombre de paraules correctes>,
-  "errors": [
-    {
-      "position": <índex de la paraula (0-based)>,
-      "original": <paraula original correcte>,
-      "userWrote": <el que ha escrit l'alumne>,
-      "type": <"ortografia" | "accentuació" | "puntuació" | "paraula incorrecta" | "paraula omesa" | "paraula afegida">,
-      "explanation": <breu explicació en català>
-    }
-  ],
-  "feedback": <missatge de retroalimentació en català, màxim 2 frases, animant l'alumne>
-}
-
-Retorna NOMÉS el JSON, sense cap altre text.`;
-
+  let transcripcio;
   try {
     const message = await anthropic.messages.create({
-      model: 'claude-opus-4-6',
+      model: MODEL,
       max_tokens: 4096,
       messages: [{
         role: 'user',
         content: [
-          { type: 'image', source: { type: 'base64', media_type: mediaType, data: imageBase64 } },
-          { type: 'text', text: prompt },
+          {
+            type: 'image',
+            source: {
+              type: 'base64',
+              media_type: req.file.mimetype || 'image/jpeg',
+              data: req.file.buffer.toString('base64'),
+            },
+          },
+          { type: 'text', text: PROMPT_TRANSCRIPCIO },
         ],
       }],
     });
-
-    const correction = parseClaudeJSON(message.content[0].text);
-    const scale = getScale(correction.errors?.length || 0);
-    correction.scale = scale;
-
-    try {
-      db.prepare(`
-        INSERT INTO user_progress (email, text_id, text_title, level, score, errors_count)
-        VALUES (?, ?, ?, ?, ?, ?)
-      `).run(req.session.profile.email, textId || 'unknown', textTitle || '', level || 'unknown', correction.score, correction.errors?.length || 0);
-    } catch (dbErr) { console.error('DB error:', dbErr.message); }
-
-    res.json(correction);
+    transcripcio = parseClaudeJSON(message.content[0].text).transcription;
   } catch (err) {
-    console.error('Claude vision error:', err.message);
-    res.status(500).json({ error: 'Error en la correcció. Torna a provar.' });
+    console.error('Claude vision error:', err.status, err.message);
+    return res.status(502).json({ error: 'No s\'ha pogut llegir la foto. Torna a provar.' });
   }
+
+  if (!transcripcio || !String(transcripcio).trim()) {
+    return res.status(422).json({ error: 'No s\'ha pogut llegir res a la foto. Prova amb més llum o més a prop.' });
+  }
+
+  if (massaLlarg(transcripcio)) {
+    return res.status(422).json({ error: 'La foto conté massa text per corregir-lo.' });
+  }
+
+  const correccio = corregeix(originalText, transcripcio, volPuntuacio(punctuationDictated));
+  correccio.transcription = transcripcio;
+  await afegeixExplicacions(correccio);
+  desa(req.session.profile.email, correccio, { level, textId, textTitle });
+  correccio.rank = estatDeRang(req.session.profile.email);
+  res.json(correccio);
 });
 
 // ── Perfil / historial ───────────────────────────────────────
@@ -230,12 +330,13 @@ router.get('/profile', requireAuth, (req, res) => {
 
   const total = rows.length;
   const avgErrors = total ? Math.round(rows.reduce((s, r) => s + (r.errors_count || 0), 0) / total) : 0;
-  const best = rows.length ? rows[rows.length - 1] : null; // sorted ASC so last = most errors
 
   res.json({
     email,
     first_name: req.session.profile.first_name,
     stats: { total, avgErrors, bestErrors: rows[0]?.errors_count ?? null },
+    rank: estatDeRang(email),
+    ranks: rang.RANGS.map(r => ({ id: r.id, nom: r.nom, punts: r.punts, que: r.que })),
     history: withScale,
   });
 });

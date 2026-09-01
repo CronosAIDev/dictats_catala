@@ -7,6 +7,7 @@ const path = require('path');
 const authRoutes = require('./routes/auth');
 const dictatsRoutes = require('./routes/dictats');
 const requireAuth = require('./middleware/requireAuth');
+const { comprovaAArrencada } = require('./lib/authBypass');
 
 const app = express();
 const PORT = process.env.PORT || 3003;
@@ -63,6 +64,10 @@ app.get('/profile', requireAuth, (req, res) => {
 });
 
 app.use((req, res) => res.status(404).json({ error: 'No trobat' }));
+
+// Es comprova abans d'escoltar: si el bypass d'auth està actiu amb
+// NODE_ENV=production, aquí es mor en lloc de servir l'app oberta.
+comprovaAArrencada();
 
 app.listen(PORT, () => {
   console.log(`Dictats en català escoltant a http://localhost:${PORT}`);

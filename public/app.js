@@ -1,5 +1,6 @@
 /* ─────────────────────────────────────────────────────────
-   Dictats en Català — Frontend principal
+   Dictats en Català — Frontend principal (escriptori)
+   La mecànica del dictat viu a /dictat.js, compartida amb /mobile.
    ───────────────────────────────────────────────────────── */
 
 const LEVEL_LABELS = {
@@ -9,26 +10,56 @@ const LEVEL_LABELS = {
   personal: 'Els meus textos',
 };
 
-const PAUSE_DURATION_MS = 5000;
-const SPEECH_RATE = 0.75;
-
 const state = {
   email: '',
   firstName: '',
   level: 'basic',
   selectedText: null,
-  phrases: [],
-  currentPhraseIdx: 0,
-  isSpeaking: false,
   dictationDone: false,
-  mode: 'editor', // 'editor' | 'paper'
+  mode: 'editor',   // editor | paper
   photoFile: null,
+  dictaPuntuacio: false,
 };
+
+const motor = new Dictat.MotorDictat(pintaEstat);
 
 const $ = id => document.getElementById(id);
 function showView(name) {
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
   $('view-' + name).classList.add('active');
+}
+
+function escapeHtml(str) {
+  return String(str ?? '')
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+// ── Preferències i esborrany ──────────────────────────────
+// Les preferències (velocitat, puntuació) van a localStorage: són ajustos, no
+// contingut de ningú. L'esborrany del dictat va a sessionStorage i s'esborra
+// en corregir i en tancar sessió, perquè això sí que és el que ha escrit una
+// persona i aquesta app s'instal·la en mòbils compartits — la mateixa raó per
+// la qual el service worker no cacheja res personal.
+function llegeixPref(clau, perDefecte) {
+  try { const v = localStorage.getItem('dictats:' + clau); return v === null ? perDefecte : JSON.parse(v); }
+  catch { return perDefecte; }
+}
+function desaPref(clau, valor) {
+  try { localStorage.setItem('dictats:' + clau, JSON.stringify(valor)); } catch { /* mode privat */ }
+}
+function clauEsborrany() {
+  return 'dictats:esborrany:' + (state.selectedText?.id || 'cap');
+}
+function desaEsborrany() {
+  if (!state.selectedText) return;
+  try { sessionStorage.setItem(clauEsborrany(), $('user-text').value); } catch { /* ple o privat */ }
+}
+function recuperaEsborrany() {
+  try { return sessionStorage.getItem(clauEsborrany()) || ''; } catch { return ''; }
+}
+function esborraEsborrany() {
+  try { sessionStorage.removeItem(clauEsborrany()); } catch { /* res a fer */ }
 }
 
 // ── Init ─────────────────────────────────────────────────
@@ -39,11 +70,13 @@ async function init() {
   state.email = email;
   state.firstName = first_name || email;
 
-  const initials = (first_name || email).slice(0, 2).toUpperCase();
-  $('header-avatar').textContent = initials;
+  motor.velocitat = llegeixPref('velocitat', Dictat.VELOCITAT_PER_DEFECTE);
+  state.dictaPuntuacio = llegeixPref('puntuacio', false);
+  motor.dictaPuntuacio = state.dictaPuntuacio;
+
+  $('header-avatar').textContent = (first_name || email).slice(0, 2).toUpperCase();
   $('avatar-email').textContent = email;
 
-  // Avatar dropdown
   $('header-avatar').addEventListener('click', (e) => {
     e.stopPropagation();
     $('avatar-dropdown').classList.toggle('open');
@@ -51,11 +84,11 @@ async function init() {
   document.addEventListener('click', () => $('avatar-dropdown').classList.remove('open'));
 
   $('btn-logout').addEventListener('click', async () => {
+    try { sessionStorage.clear(); } catch { /* res a fer */ }
     await fetch('/api/logout', { method: 'POST' });
     window.location.href = '/login';
   });
 
-  // Level cards
   document.querySelectorAll('.level-card').forEach(card => {
     card.addEventListener('click', () => {
       document.querySelectorAll('.level-card').forEach(c => c.classList.remove('active'));
@@ -65,39 +98,97 @@ async function init() {
     });
   });
 
-  // Mode toggle
   $('mode-editor').addEventListener('click', () => setMode('editor'));
   $('mode-paper').addEventListener('click', () => setMode('paper'));
-
-  // Photo input
   $('photo-input').addEventListener('change', onPhotoSelected);
   $('btn-remove-photo').addEventListener('click', removePhoto);
 
-  // Back buttons
-  $('btn-back-select').addEventListener('click', () => showView('select'));
+  // Sortir del dictat el pausa. Abans es quedava sonant de fons i, en tornar,
+  // s'havia de començar des de la primera frase.
+  $('btn-back-select').addEventListener('click', () => { motor.pausa(); showView('select'); });
   $('btn-back-dictation').addEventListener('click', () => showView('dictation'));
   $('btn-new-dictation').addEventListener('click', () => { resetDictation(); showView('select'); });
 
-  // Dictation controls
-  $('btn-start-dictation').addEventListener('click', startDictation);
-  $('btn-repeat-phrase').addEventListener('click', repeatCurrentPhrase);
+  $('btn-start-dictation').addEventListener('click', iniciaDictat);
+  $('btn-repeat-phrase').addEventListener('click', () => motor.repeteix());
+  $('btn-pause-dictation').addEventListener('click', () => motor.alternaPausa());
+  $('btn-next-phrase').addEventListener('click', () => motor.seguent());
+  $('btn-extend-pause').addEventListener('click', () => motor.allarga());
+
   $('btn-clear-text').addEventListener('click', () => {
     $('user-text').value = '';
+    esborraEsborrany();
     updateCorrectBtn();
   });
   $('btn-correct').addEventListener('click', submitCorrection);
+  $('user-text').addEventListener('input', () => { updateCorrectBtn(); desaEsborrany(); });
 
-  $('user-text').addEventListener('input', updateCorrectBtn);
+  // La barra espaiadora no serveix de drecera: durant la pausa s'està escrivint
+  // al textarea i el que faria és posar un espai. Ctrl+Enter no molesta ningú.
+  document.addEventListener('keydown', (e) => {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter' && $('view-dictation').classList.contains('active')) {
+      e.preventDefault();
+      motor.seguent();
+    }
+  });
 
-  // Add personal text modal
+  const rang = $('speech-rate');
+  rang.value = String(motor.velocitat);
+  mostraVelocitat();
+  rang.addEventListener('input', () => {
+    motor.velocitat = parseFloat(rang.value);
+    mostraVelocitat();
+    desaPref('velocitat', motor.velocitat);
+  });
+
+  const casella = $('dictate-punctuation');
+  casella.checked = state.dictaPuntuacio;
+  casella.addEventListener('change', () => {
+    state.dictaPuntuacio = casella.checked;
+    motor.dictaPuntuacio = casella.checked;
+    desaPref('puntuacio', state.dictaPuntuacio);
+  });
+
   $('btn-add-text').addEventListener('click', () => { $('modal-add-text').style.display = 'flex'; });
   $('btn-cancel-add-text').addEventListener('click', () => { $('modal-add-text').style.display = 'none'; });
   $('btn-save-text').addEventListener('click', savePersonalText);
 
+  comprovaVeu();
   await loadTextList('basic');
 }
 
-// ── Mode toggle ───────────────────────────────────────────
+function mostraVelocitat() {
+  $('speech-rate-value').textContent = motor.velocitat.toFixed(2).replace('.', ',') + '×';
+}
+
+// ── Veu (F21) ─────────────────────────────────────────────
+// Si no hi ha veu catalana, la síntesi cau a una de castellana. Abans això
+// passava en silenci: el dictat sonava amb fonètica castellana i qui el feia
+// no tenia manera de saber-ho. És pitjor que no practicar.
+function comprovaVeu() {
+  if (!window.speechSynthesis) {
+    return mostraAvisVeu('Aquest navegador no té síntesi de veu. Prova amb Chrome, Edge o Safari.');
+  }
+  const revisa = () => {
+    if (!window.speechSynthesis.getVoices().length) return;   // encara no han carregat
+    if (Dictat.veusCatalanes().length) { $('voice-warning').style.display = 'none'; return; }
+    mostraAvisVeu(
+      'No hi ha cap veu catalana instal·lada en aquest dispositiu: el dictat sonarà amb una veu castellana '
+      + 'i pronunciarà malament el català. Android: Configuració → Sistema → Idiomes → Sortida de síntesi de veu. '
+      + 'iOS: Configuració → Accessibilitat → Contingut parlat → Veus → Català. '
+      + 'Windows: Configuració → Hora i idioma → Idioma i regió → afegeix el català.'
+    );
+  };
+  revisa();
+  window.speechSynthesis.onvoiceschanged = revisa;
+}
+
+function mostraAvisVeu(text) {
+  $('voice-warning').textContent = text;
+  $('voice-warning').style.display = '';
+}
+
+// ── Mode ──────────────────────────────────────────────────
 function setMode(mode) {
   state.mode = mode;
   state.photoFile = null;
@@ -112,12 +203,9 @@ function setMode(mode) {
 }
 
 function updateCorrectBtn() {
-  if (state.mode === 'editor') {
-    $('btn-correct').disabled = $('user-text').value.trim().length < 3;
-  } else {
-    // Paper mode: enabled always when dictation done (photo is optional)
-    $('btn-correct').disabled = !state.dictationDone;
-  }
+  $('btn-correct').disabled = state.mode === 'editor'
+    ? $('user-text').value.trim().length < 3
+    : !state.dictationDone;
 }
 
 function onPhotoSelected(e) {
@@ -142,32 +230,33 @@ function removePhoto() {
   updateCorrectBtn();
 }
 
-// ── Text list ─────────────────────────────────────────────
+// ── Llista de textos ──────────────────────────────────────
 async function loadTextList(level) {
   const isPersonal = level === 'personal';
   $('text-list-title').textContent = `Textos disponibles — ${LEVEL_LABELS[level]}`;
   $('btn-add-text').style.display = isPersonal ? '' : 'none';
   $('text-list').innerHTML = '<div style="color:var(--text-muted);font-size:.875rem">Carregant textos…</div>';
 
-  const url = isPersonal ? '/api/user-texts' : `/api/texts/${level}`;
-  const res = await fetch(url);
+  const res = await fetch(isPersonal ? '/api/user-texts' : `/api/texts/${level}`);
   if (!res.ok) { $('text-list').innerHTML = '<div style="color:var(--error)">Error carregant els textos</div>'; return; }
   const texts = await res.json();
 
   if (isPersonal && texts.length === 0) {
-    $('text-list').innerHTML = '<div style="color:var(--text-muted);font-size:.875rem">No tens cap text personal. Usa el botó "+ Afegir text" per crear-ne un.</div>';
+    $('text-list').innerHTML = '<div style="color:var(--text-muted);font-size:.875rem">No tens cap text personal. Usa el botó «+ Afegir text» per crear-ne un.</div>';
     return;
   }
 
+  // El títol d'un text personal l'escriu qui l'ha creat: va escapat, com ja ho
+  // anava la resta de la pantalla.
   $('text-list').innerHTML = texts.map(t => `
-    <div class="text-item" data-id="${t.id}" data-dbid="${t.dbId || ''}">
+    <div class="text-item" data-id="${escapeHtml(t.id)}" data-dbid="${escapeHtml(t.dbId || '')}">
       <div style="flex:1">
-        <div class="text-title">${t.title}</div>
-        <div class="text-meta">${t.description}</div>
+        <div class="text-title">${escapeHtml(t.title)}</div>
+        <div class="text-meta">${escapeHtml(t.description)}</div>
       </div>
       <div style="display:flex;align-items:center;gap:8px">
-        <div class="text-words">${t.wordCount} paraules</div>
-        ${isPersonal ? `<button class="btn btn-ghost btn-sm delete-personal" data-dbid="${t.dbId}" title="Eliminar">✕</button>` : ''}
+        <div class="text-words">${escapeHtml(t.wordCount)} paraules</div>
+        ${isPersonal ? `<button class="btn btn-ghost btn-sm delete-personal" data-dbid="${escapeHtml(t.dbId)}" title="Eliminar">✕</button>` : ''}
       </div>
     </div>
   `).join('');
@@ -189,15 +278,13 @@ async function loadTextList(level) {
   });
 }
 
-// ── Select text ───────────────────────────────────────────
+// ── Triar text ────────────────────────────────────────────
 async function selectText(id, isPersonal) {
   let text;
   if (isPersonal) {
-    const res = await fetch('/api/user-texts');
-    const list = await res.json();
+    const list = await (await fetch('/api/user-texts')).json();
     text = list.find(t => t.id === id);
   } else {
-    const [level, ...rest] = [state.level];
     const res = await fetch(`/api/texts/${state.level}/${id}`);
     if (!res.ok) return;
     text = await res.json();
@@ -205,16 +292,16 @@ async function selectText(id, isPersonal) {
   if (!text) return;
 
   state.selectedText = text;
-  state.phrases = text.text.split('||').map(s => s.trim()).filter(Boolean);
-
   $('dictation-title').textContent = text.title;
   $('dictation-level-badge').textContent = LEVEL_LABELS[state.level];
-  $('user-text').value = '';
   resetDictationUI();
+  motor.carrega(text.text.split('||').map(s => s.trim()).filter(Boolean));
+  $('user-text').value = recuperaEsborrany();
+  updateCorrectBtn();
   showView('dictation');
 }
 
-// ── Personal texts ────────────────────────────────────────
+// ── Textos personals ──────────────────────────────────────
 async function savePersonalText() {
   const title = $('new-text-title').value.trim();
   const text = $('new-text-body').value.trim();
@@ -233,156 +320,120 @@ async function savePersonalText() {
   }
 }
 
-// ── Dictation logic ───────────────────────────────────────
+// ── El dictat: només pintar el que diu el motor ───────────
+function iniciaDictat() {
+  if (!window.speechSynthesis) { alert('Aquest navegador no suporta la síntesi de veu. Prova amb Chrome.'); return; }
+  $('btn-start-dictation').style.display = 'none';
+  $('btn-repeat-phrase').style.display = '';
+  $('btn-pause-dictation').style.display = '';
+  $('btn-next-phrase').style.display = '';
+  motor.inicia();
+}
+
+function pintaEstat(info) {
+  $('progress-bar').style.width = info.progres + '%';
+  state.dictationDone = info.estat === 'fet';
+
+  if (info.estat === 'llegint') {
+    $('phrase-indicator').textContent = `Frase ${info.frase + 1} de ${info.total}`;
+    $('status-badge').innerHTML = `<span class="speaking-badge"><span class="dot"></span>Llegint frase ${info.frase + 1} de ${info.total}</span>`;
+    $('btn-extend-pause').style.display = 'none';
+    $('btn-pause-dictation').textContent = '⏸ Pausar';
+  } else if (info.estat === 'pausa') {
+    $('status-badge').innerHTML = `<span class="pause-badge">⏸ ${info.segons} s per escriure</span>`;
+    $('btn-extend-pause').style.display = '';
+    $('btn-pause-dictation').textContent = '⏸ Pausar';
+  } else if (info.estat === 'pausat') {
+    $('status-badge').innerHTML = '<span class="pause-badge">⏹ Dictat aturat</span>';
+    $('btn-extend-pause').style.display = 'none';
+    $('btn-pause-dictation').textContent = '▶ Reprendre';
+  } else if (info.estat === 'fet') {
+    $('phrase-indicator').textContent = `Dictat complet (${info.total} frases)`;
+    $('status-badge').innerHTML = '<span class="speaking-badge" style="background:var(--success-light);color:var(--success)">✓ Dictat completat</span>';
+    ['btn-repeat-phrase', 'btn-pause-dictation', 'btn-next-phrase', 'btn-extend-pause']
+      .forEach(id => { $(id).style.display = 'none'; });
+  }
+
+  updateCorrectBtn();
+}
+
 function resetDictationUI() {
-  state.currentPhraseIdx = 0;
-  state.isSpeaking = false;
+  motor.atura();
   state.dictationDone = false;
   state.photoFile = null;
   $('progress-bar').style.width = '0%';
   $('phrase-indicator').textContent = '';
   $('status-badge').innerHTML = '';
   $('btn-start-dictation').style.display = '';
-  $('btn-repeat-phrase').style.display = 'none';
+  ['btn-repeat-phrase', 'btn-pause-dictation', 'btn-next-phrase', 'btn-extend-pause']
+    .forEach(id => { $(id).style.display = 'none'; });
   $('btn-correct').disabled = true;
   setMode('editor');
-  cancelSpeech();
 }
 
 function resetDictation() {
   resetDictationUI();
+  $('user-text').value = '';
   state.selectedText = null;
-  state.phrases = [];
+  motor.carrega([]);
 }
 
-function cancelSpeech() {
-  if (window.speechSynthesis) window.speechSynthesis.cancel();
+// ── Correcció ─────────────────────────────────────────────
+// La sessió dura 8 hores: qui torna l'endemà i prem «Corregir» rebia un
+// «No autenticat» en un alert, sense cap manera de tornar a entrar.
+function tornaAlLogin() {
+  window.location.href = '/login';
 }
 
-function getVoice() {
-  const voices = window.speechSynthesis.getVoices();
-  return voices.find(v => v.lang.startsWith('ca')) || voices.find(v => v.lang.startsWith('es')) || null;
-}
-
-function speak(text, onEnd) {
-  cancelSpeech();
-  const utter = new SpeechSynthesisUtterance(text);
-  utter.lang = 'ca-ES';
-  utter.rate = SPEECH_RATE;
-  const voice = getVoice();
-  if (voice) utter.voice = voice;
-  utter.onend = onEnd;
-  utter.onerror = () => onEnd && onEnd();
-  window.speechSynthesis.speak(utter);
-}
-
-function setStatusSpeaking(phraseNum, total) {
-  $('status-badge').innerHTML = `<span class="speaking-badge"><span class="dot"></span>Llegint frase ${phraseNum} de ${total}</span>`;
-}
-function setStatusPausing(seconds) {
-  $('status-badge').innerHTML = `<span class="pause-badge">⏸ Pausa de ${seconds}s — escriu ara!</span>`;
-}
-function setStatusDone() {
-  $('status-badge').innerHTML = `<span class="speaking-badge" style="background:var(--success-light);color:var(--success)">✓ Dictado completat</span>`;
-}
-
-async function startDictation() {
-  if (!state.phrases.length) return;
-  if (!window.speechSynthesis) { alert('El teu navegador no suporta la síntesi de veu. Prova Chrome.'); return; }
-  $('btn-start-dictation').style.display = 'none';
-  $('btn-repeat-phrase').style.display = '';
-  state.isSpeaking = true;
-  state.currentPhraseIdx = 0;
-  speakNextPhrase();
-}
-
-function speakNextPhrase() {
-  const idx = state.currentPhraseIdx;
-  const total = state.phrases.length;
-
-  if (idx >= total) {
-    state.isSpeaking = false;
-    state.dictationDone = true;
-    $('progress-bar').style.width = '100%';
-    $('phrase-indicator').textContent = `Dictado complet (${total} frases)`;
-    $('btn-repeat-phrase').style.display = 'none';
-    setStatusDone();
-    updateCorrectBtn();
-    return;
-  }
-
-  const phrase = state.phrases[idx];
-  $('progress-bar').style.width = `${(idx / total) * 100}%`;
-  $('phrase-indicator').textContent = `Frase ${idx + 1} de ${total}`;
-  setStatusSpeaking(idx + 1, total);
-
-  speak(phrase, () => {
-    if (total - idx - 1 > 0) {
-      setStatusPausing(PAUSE_DURATION_MS / 1000);
-      setTimeout(() => { state.currentPhraseIdx++; speakNextPhrase(); }, PAUSE_DURATION_MS);
-    } else {
-      state.currentPhraseIdx++;
-      speakNextPhrase();
-    }
-  });
-}
-
-function repeatCurrentPhrase() {
-  if (!state.phrases.length) return;
-  const idx = Math.max(0, state.currentPhraseIdx - 1);
-  cancelSpeech();
-  speak(state.phrases[idx] || state.phrases[state.phrases.length - 1], null);
-}
-
-// ── Correction ────────────────────────────────────────────
 async function submitCorrection() {
   if (!state.selectedText) return;
 
   $('btn-correct').disabled = true;
   $('correction-loading').style.display = '';
-  cancelSpeech();
+  motor.atura();
 
   try {
     let correction;
 
     if (state.mode === 'paper' && state.photoFile) {
-      // Photo correction
-      $('loading-msg').textContent = 'Claude està llegint la foto i corregint…';
+      $('loading-msg').textContent = 'Llegint la foto i corregint…';
       const formData = new FormData();
       formData.append('photo', state.photoFile);
       formData.append('originalText', state.selectedText.text);
       formData.append('level', state.level);
       formData.append('textId', state.selectedText.id || 'unknown');
       formData.append('textTitle', state.selectedText.title || '');
+      formData.append('punctuationDictated', String(state.dictaPuntuacio));
 
       const res = await fetch('/api/correct-image', { method: 'POST', body: formData });
-      if (!res.ok) { const { error } = await res.json(); throw new Error(error); }
+      if (res.status === 401) return tornaAlLogin();
+      if (!res.ok) throw new Error((await res.json()).error);
       correction = await res.json();
-    } else if (state.mode === 'paper' && !state.photoFile) {
-      // Paper mode, no photo — just show original without correction
+    } else if (state.mode === 'paper') {
       $('correction-loading').style.display = 'none';
-      renderResultsNoCorrección();
+      renderSenseCorreccio();
       showView('results');
       return;
     } else {
-      // Text editor correction
-      $('loading-msg').textContent = 'Claude està corregint el text…';
-      const userText = $('user-text').value.trim();
+      $('loading-msg').textContent = 'Corregint el dictat…';
       const res = await fetch('/api/correct', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           originalText: state.selectedText.text,
-          userText,
+          userText: $('user-text').value.trim(),
           level: state.level,
           textId: state.selectedText.id || 'unknown',
           textTitle: state.selectedText.title || '',
+          punctuationDictated: state.dictaPuntuacio,
         }),
       });
-      if (!res.ok) { const { error } = await res.json(); throw new Error(error); }
+      if (res.status === 401) return tornaAlLogin();
+      if (!res.ok) throw new Error((await res.json()).error);
       correction = await res.json();
     }
 
+    esborraEsborrany();
     $('correction-loading').style.display = 'none';
     renderResults(correction);
     showView('results');
@@ -393,30 +444,99 @@ async function submitCorrection() {
   }
 }
 
-// ── Results ───────────────────────────────────────────────
-function renderResultsNoCorrección() {
-  $('result-scale-label').textContent = 'Dictado completat';
+// ── Resultats ─────────────────────────────────────────────
+// El separador de pauses es reemplaça per un espai, exactament com fa
+// `tokenitza()` al servidor. Amb `''` un text personal escrit sense espais
+// (`frase.||frase.`) donava una paraula menys al client que al servidor i
+// totes les posicions posteriors marcaven la paraula equivocada.
+function textNet() {
+  return state.selectedText.text.replace(/\|\|/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
+function renderSenseCorreccio() {
+  $('result-scale-label').textContent = 'Dictat completat';
   $('result-scale-label').className = 'scale-label scale-good';
-  $('result-scale-sub').textContent = 'Has fet el dictado en paper. Pujar una foto per veure la correcció.';
+  $('result-scale-sub').textContent = 'Has fet el dictat en paper. Puja una foto per veure la correcció.';
   $('result-stats').textContent = '';
   $('result-transcription').style.display = 'none';
   $('errors-section').style.display = 'none';
-  $('feedback-box').textContent = 'Bon treball! Has completat el dictado.';
+  $('warnings-section').style.display = 'none';
+  $('feedback-box').textContent = 'Bon treball! Has completat el dictat.';
+  $('rank-block').style.display = 'none';
+  $('original-marked').innerHTML = textNet().split(/\s+/).map(w => `<span class="word-ok">${escapeHtml(w)}</span>`).join(' ');
+}
 
-  const cleanOriginal = state.selectedText.text.replace(/\|\|/g, '').replace(/\s+/g, ' ').trim();
-  $('original-marked').innerHTML = cleanOriginal.split(/\s+/).map(w => `<span class="word-ok">${escapeHtml(w)}</span>`).join(' ');
+function fitxaError(err) {
+  return `
+    <div class="error-item">
+      <span class="error-type">${escapeHtml(err.type || 'error')}</span>
+      <div class="error-detail">
+        <div class="error-words">
+          <span class="wrong">${escapeHtml(err.userWrote || '(omès)')}</span>
+          <span class="arrow">→</span>
+          <span class="right">${escapeHtml(err.original || '(sobra)')}</span>
+        </div>
+        <div class="error-explanation">${escapeHtml(err.explanation || '')}</div>
+      </div>
+    </div>`;
+}
+
+// El rang és l'altre eix del progrés: l'escala diu com ha anat aquest dictat,
+// això diu on ets en conjunt i només es mou amb el temps.
+function pintaRang(rank) {
+  if (!rank || !rank.ultim) { $('rank-block').style.display = 'none'; return; }
+  $('rank-block').style.display = '';
+
+  const guanyats = rank.ultim.guanyats;
+  $('rank-delta').textContent = (guanyats >= 0 ? '+' : '') + guanyats + ' punts';
+  $('rank-delta').className = 'rank-delta ' + (guanyats >= 0 ? 'gain' : 'loss');
+  $('rank-delta-note').textContent = guanyats >= 0
+    ? 'Com més difícil és el text, més en val.'
+    : 'A partir de sis errors es resten punts.';
+
+  const canvi = $('rank-change');
+  if (rank.ultim.haPujat) {
+    canvi.style.display = '';
+    canvi.className = 'rank-change up';
+    canvi.textContent = `Has pujat a ${rank.rang.nom}!`;
+  } else if (rank.ultim.haBaixat) {
+    canvi.style.display = '';
+    canvi.className = 'rank-change down';
+    canvi.textContent = `Has baixat de ${rank.ultim.rangAnterior} a ${rank.rang.nom}.`;
+  } else {
+    canvi.style.display = 'none';
+  }
+
+  $('rank-name').textContent = rank.rang.nom;
+  $('rank-step').textContent = `${rank.rang.nivell} de ${rank.rang.de}`;
+  $('rank-what').textContent = rank.rang.que;
+  $('rank-points').textContent = `${rank.punts} punts`;
+
+  if (rank.seguent) {
+    $('rank-bar').style.width = Math.max(0, Math.min(100, rank.seguent.progres)) + '%';
+    $('rank-next').textContent = `Et falten ${rank.seguent.falten} punts per a ${rank.seguent.nom}.`;
+  } else {
+    $('rank-bar').style.width = '100%';
+    $('rank-next').textContent = 'Has coronat el castell. No hi ha res més amunt.';
+  }
 }
 
 function renderResults(correction) {
   const errors = correction.errors || [];
+  const warnings = correction.warnings || [];
   const scale = correction.scale || { label: '—', sub: '', cls: 'scale-good' };
 
   $('result-scale-label').textContent = scale.label;
   $('result-scale-label').className = 'scale-label ' + scale.cls;
   $('result-scale-sub').textContent = scale.sub;
-  $('result-stats').textContent = `${correction.correctWords ?? '—'} de ${correction.totalWords ?? '—'} paraules correctes · ${errors.length} error${errors.length !== 1 ? 's' : ''}`;
+  // Les paraules afegides no ocupen cap posició de l'original, així que sense
+  // dir-ho la línia quedava «3 de 3 paraules correctes · 3 errors».
+  const afegides = errors.filter(e => e.position == null).length;
+  $('result-stats').textContent =
+    `${correction.correctWords ?? '—'} de ${correction.totalWords ?? '—'} paraules correctes · `
+    + `${errors.length} error${errors.length !== 1 ? 's' : ''}`
+    + (afegides ? ` · ${afegides} paraula${afegides !== 1 ? 'es' : ''} de més` : '');
 
-  // Show transcription if from photo
   if (correction.transcription) {
     $('result-transcription').style.display = '';
     $('result-transcription').innerHTML = `<strong>Text transcrit de la foto:</strong><br>${escapeHtml(correction.transcription)}`;
@@ -424,47 +544,37 @@ function renderResults(correction) {
     $('result-transcription').style.display = 'none';
   }
 
-  const cleanOriginal = state.selectedText.text.replace(/\|\|/g, '').replace(/\s+/g, ' ').trim();
-  const words = cleanOriginal.split(/\s+/);
-  const errorMap = {};
-  errors.forEach(e => { errorMap[e.position] = e; });
-
-  $('original-marked').innerHTML = words.map((word, i) => {
-    if (errorMap[i]) {
-      const err = errorMap[i];
-      return `<span class="word-error" title="${escapeHtml(err.explanation || '')}">${escapeHtml(word)}</span>`;
+  // Les posicions les calcula ara el servidor i són exactes. Les paraules
+  // afegides no en tenen —no eren a l'original— i només surten a la llista.
+  // Un error pot abastar més d'una paraula de l'original (una contracció
+  // desfeta), i llavors s'han de pintar totes, no només la primera.
+  const marques = {};
+  const explicacions = {};
+  const pinta = (e, classe) => {
+    if (e.position == null) return;
+    for (let k = 0; k < (e.span || 1); k++) {
+      const p = e.position + k;
+      if (classe === 'word-error' || !marques[p]) marques[p] = classe;
+      explicacions[p] = e.explanation || '';
     }
-    return `<span class="word-ok">${escapeHtml(word)}</span>`;
+  };
+  errors.forEach(e => pinta(e, 'word-error'));
+  warnings.forEach(e => pinta(e, 'word-warning'));
+
+  $('original-marked').innerHTML = textNet().split(/\s+/).map((word, i) => {
+    const titol = explicacions[i] ? ` title="${escapeHtml(explicacions[i])}"` : '';
+    return `<span class="${marques[i] || 'word-ok'}"${titol}>${escapeHtml(word)}</span>`;
   }).join(' ');
 
-  if (errors.length === 0) {
-    $('errors-section').style.display = 'none';
-  } else {
-    $('errors-section').style.display = '';
-    $('errors-list-items').innerHTML = errors.map(err => `
-      <div class="error-item">
-        <span class="error-type">${escapeHtml(err.type || 'error')}</span>
-        <div class="error-detail">
-          <div class="error-words">
-            <span class="wrong">${escapeHtml(err.userWrote || '(omès)')}</span>
-            <span class="arrow">→</span>
-            <span class="right">${escapeHtml(err.original || '')}</span>
-          </div>
-          <div class="error-explanation">${escapeHtml(err.explanation || '')}</div>
-        </div>
-      </div>
-    `).join('');
-  }
+  $('errors-section').style.display = errors.length ? '' : 'none';
+  if (errors.length) $('errors-list-items').innerHTML = errors.map(fitxaError).join('');
+
+  // La puntuació que no s'ha dictat es veu, però no puntua.
+  $('warnings-section').style.display = warnings.length ? '' : 'none';
+  if (warnings.length) $('warnings-list-items').innerHTML = warnings.map(fitxaError).join('');
 
   $('feedback-box').textContent = correction.feedback || '';
-}
-
-function escapeHtml(str) {
-  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-}
-
-if (window.speechSynthesis) {
-  window.speechSynthesis.onvoiceschanged = () => {};
+  pintaRang(correction.rank);
 }
 
 init();

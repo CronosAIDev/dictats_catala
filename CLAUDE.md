@@ -43,7 +43,8 @@ Trawlingweb (veure avís més avall). Rellevant aquí:
 | `changelogs/` | Un fragment per commit significatiu |
 | `docs/project/ROADMAP.md` | El futur: features, estat, prioritat |
 | `docs/guides/DEVELOPER_HANDBOOK.md` | Sempre vigent: setup, arquitectura, convencions, deploy |
-| `docs/shell/SECURITY_PROTOCOL.md` | Protocol de seguretat (pendent de crear — veure ROADMAP) |
+| `docs/shell/SECURITY_PROTOCOL.md` | Protocol de seguretat |
+| `docs/shell/INSTRUCCIONES_SETUP.md` | Alta d'un dev al projecte GCP `kairos-family-app` |
 
 ### Git flow (§9.6)
 
