@@ -50,20 +50,28 @@ copia. El que entrena de veritat és **ortografia, accentuació i puntuació**.
 - Un mode de **redacció lliure** (l'usuari escriu i Claude n'avalua la sintaxi) queda com a
   possible fase 2, **només si els docents ho demanen** un cop publicada.
 
-## D'on partim (verificat, no suposat)
+## D'on partim (actualitzat 01-09 amb el que ha verificat en Gerard)
 
-| | Estat avui |
-|---|---|
-| Web en producció | ✅ `https://dictation.generaive.io` (HTTP 302 → `/login`), PM2 `dictats-catala` `online`, 8 dies d'uptime, 0 reinicis inestables |
-| Certificat | ✅ vàlid fins al 27-10-2026 (certbot renova sol) |
-| **Ús real** | ⚠️ **2 correccions en tota la vida de l'app**, les dues el 23-24 de març. Cinc mesos sense cap |
-| PWA | ❌ **no hi ha `manifest.webmanifest`, ni `sw.js`, ni icones** |
-| Login | email + contrasenya contra `BrandWaiUserProfile` (MySQL `brandwaiapp`) |
-| Registre d'usuaris nous | ❌ no existeix: els comptes es creen fora de l'app |
-| Vista mòbil | ✅ `/mobile` ja existeix |
+> ⚠️ **Aquesta taula té dues columnes a propòsit.** El gameplan original només mirava `main`,
+> i en Gerard tenia feina feta en local que no podia pujar per falta de permís d'escriptura.
+> Fins que no es desplegui, **producció i el codi són coses diferents** — i les fases 1 i 2
+> es tanquen a producció, no al portàtil de ningú.
 
-`public/` només conté: `app.html`, `app.js`, `login.html`, `mobile.html`, `profile.html`,
-`style.css`.
+| | A producció (`main`) | A la feina d'en Gerard (`v10`) |
+|---|---|---|
+| Web amunt | ✅ `dictation.generaive.io`, PM2 `dictats-catala` `online` | — |
+| Certificat | ✅ vàlid fins al 27-10-2026 (certbot renova sol) | — |
+| **Ús real** | ⚠️ **2 correccions en tota la vida**, les dues el 23-24 de març | — |
+| **PWA** | ❌ `/manifest.webmanifest`, `/sw.js` i `/icons/` donen **404** | ✅ **Feta el 26-08** (F10): manifest, `sw.js`, `pwa.js` i 4 icones PNG, cap SVG |
+| Login | email + contrasenya contra `BrandWaiUserProfile` | Fase 0 sense començar |
+| Registre d'usuaris nous | ❌ no existeix: els comptes es creen fora de l'app | — |
+| Vista mòbil | ✅ `/mobile` ja existeix | — |
+| Correcció si l'API falla | ❌ **500, l'usuari es queda sense res** | ✅ Degrada: la comparació es fa al servidor (F31) i surt la correcció igualment |
+| Política de privacitat | ❌ `/privacitat` → **404** | ✅ escrita, pendent de desplegar |
+
+**Correcció al que deia aquest fitxer**: no és cert que `public/` només tingui sis fitxers ni
+que no hi hagi PWA. Ho era a `main`, i a `main` encara ho és — però la feina existia des del
+26-08. Verificat l'01-09 contra producció: els quatre camins de la PWA donen 404.
 
 ### El dato que condiciona tot el gameplan
 
@@ -103,26 +111,32 @@ escrites. **No cal redescobrir-les.** Les tres que costen diners o dies:
 
 ---
 
-## Fase 0 — DECISIÓ: qui pot fer servir Dictats (BLOQUEJANT)
+## Fase 0 — Identitat pròpia ✅ DECIDIDA el 30-08 · ja no bloqueja
 
-**És una decisió de l'Óscar, no feina d'en Gerard.** Bloqueja tota la resta.
+**Era** una decisió de l'Óscar i bloquejava la resta. **Ja està presa: opció A, identitat
+pròpia, calcant `aicamper_app`.** Ara és feina d'en Gerard (#16), no una decisió pendent.
 
-Avui, per entrar a Dictats cal existir a `BrandWaiUserProfile`, que és la taula de clients
-de **FeedScale/Trawlingweb**, i les contrasenyes hi viuen **en text pla**. Mentre l'app
-estigui darrere d'un login intern això és defensable. **Publicar a Play, no.** Qui es
-descarregui l'app des de la botiga no té compte, i no hi ha manera de fer-se'n un.
+Per què calia: per entrar a Dictats cal existir a `BrandWaiUserProfile`, la taula de clients
+de **Trawlingweb**, amb les contrasenyes **en text pla**. Darrere d'un login intern és
+defensable; a Play no — qui es baixa l'app no té compte ni manera de fer-se'n un. I declarar
+text pla al Data Safety és motiu de retirada.
 
-A més: declarar a **Data Safety** que les contrasenyes viatgen i es desen en text pla és un
-motiu de retirada, i mentir-hi també.
+**El que es fa** (detall complet a #16): taula `dictats_usuarios` a la base `cronosai` amb
+prefix `dictats_`, **bcrypt**, sessions a MySQL i **Google OAuth** sobre el projecte GCP
+`kairos-family-app` — el mateix que `aicamper_app`. Es descarten quedar-se en proves
+tancades (B) i obrir registre sobre la taula de Trawlingweb (C).
 
-| Sortida | Què implica |
-|---|---|
-| **A. Identitat pròpia de Dictats** | Taula d'usuaris pròpia + Google OAuth. Desacobla Dictats de la base de clients de Trawlingweb. És el que va fer `aicamper_app` a la seva Fase 1 |
-| **B. No publicar obertament** | Quedar-se al canal de proves tancades de Play (testers convidats). L'app s'instal·la, però no és pública |
-| **C. Obrir registre sobre la taula actual** | ❌ **Descartada**: posaria comptes de clients de Trawlingweb i contrasenyes en text pla darrere d'una app pública |
+**Efecte lateral que desbloqueja les proves**: amb Google OAuth els 20 testers docents entren
+amb el seu compte de Google. Sense crear comptes ni administrar ningú.
 
-**Fins que això no es decideixi, la Fase 3 no es pot omplir** — el formulari de Data Safety
-depèn literalment d'aquesta resposta.
+> ⚠️ **La decisió activa un requisit de Play que aquest gameplan no llistava enlloc.** Ho va
+> trobar en Gerard verificant-ho a la documentació: tota app que permeti **crear compte des
+> de dins** ha d'oferir esborrar-lo per **dues vies** —una dins de l'app i una **URL web**—,
+> en vigor des de l'abril de 2024, amb pregunta pròpia al Data Safety.
+>
+> Avui Dictats en queda **fora**, precisament perquè els comptes es creen fora de l'app.
+> L'opció A hi entra de ple. Són dues coses noves per a #16: la ruta i la pàgina.
+> [Referència](https://support.google.com/googleplay/android-developer/answer/13327111)
 
 ---
 
@@ -148,14 +162,46 @@ l'app instal·lada obre a pantalla completa.
 ## Fase 2 — Empaquetar com a TWA
 
 - [ ] Bubblewrap sobre `dictation.generaive.io`
-- [ ] `assetlinks.json` a `/.well-known/` del domini, servit **sense cookie ni sessió**
-      (avui `requireAuth` protegeix gairebé tot: cal excloure aquesta ruta explícitament)
+- [ ] `assetlinks.json` a `/.well-known/` del domini, servit sense cookie ni sessió
 - [ ] Keystore generat i guardat **fora del repo**
 - [ ] Les **dues** empremtes SHA-256 — trampa 2
 - [ ] AAB signat
 
 **Fet quan**: l'AAB instal·lat en un mòbil real obre a pantalla completa (sense barra de
-Chrome) i es completa un dictat sencer des d'allà.
+Chrome) i s'hi completa un dictat sencer **pels dos camins, text i foto**. La foto no és un
+extra: és el diferencial del producte (#20), i `<input capture="environment">` dins d'un TWA
+és justament un flux que dona sorpreses.
+
+> ✅ **Correcció al que deia aquest fitxer.** Deia que `assetlinks.json` falla perquè
+> `requireAuth` protegeix gairebé tot i cal excloure la ruta. **És fals**, i en Gerard ho va
+> comprovar executant: `express.static` va a `src/index.js:32`, **abans** de la sessió, i per
+> això la resta d'estàtics es serveixen sense login. La causa real és que **Express ignora
+> per defecte els directoris que comencen per punt** (`dotfiles: 'ignore'`), i `.well-known`
+> n'és un. Es resol amb `dotfiles: 'allow'` o una ruta explícita.
+>
+> Importa perquè és el mateix mode de fallada silenciós que les empremtes: el TWA
+> s'instal·la i s'obre igualment, amb la barra de Chrome i sense cap error. Qui hagués buscat
+> la causa a `requireAuth` no hi hauria trobat res.
+
+---
+
+## El camí crític que aquest gameplan no deia
+
+Aquest fitxer va arribar a la seva primera versió **sense esmentar el desplegament ni una
+sola vegada**, i en canvi:
+
+- El "fet quan" de la **Fase 1** és que **Chrome a Android** ofereixi instal·lar a
+  `dictation.generaive.io`.
+- El "fet quan" de la **Fase 2** és un **AAB instal·lat** contra aquell mateix domini.
+
+**Les dues fases es tanquen a producció**, i producció s'alimenta de `main` amb
+`scripts/deploy/deploy-dictats.sh`. Cap feina local tanca cap fase.
+
+Va estar **tallat fins a l'01-09** perquè en Gerard tenia `read` sobre el repo i 9 commits
+que no podia pujar. Resolt: té `write` des de l'01-09.
+
+**Regla que se'n deriva**: quan una fase digui "fet quan… a producció", el desplegament
+forma part de la fase, no és un pas administratiu posterior.
 
 ---
 
@@ -176,10 +222,34 @@ Res d'això és codi, i tot bloqueja la publicació.
 
 - [ ] **Decidir el nom públic.** Avui conviuen "Dictats", "dictats_catala" i el domini
       `dictation.generaive.io`. Es decideix **abans** del primer AAB — trampa 3
-- [ ] Paraules clau que la gent escriu de veritat: "dictats en català", "dictat català",
-      "ortografia catalana", "practicar català"
+- [ ] **`applicationId`** — es congela per sempre amb el primer AAB. Proposta d'en Gerard:
+      `io.generaive.dictats`. **Pendent de l'Óscar**: ¿`generaive.io` és estable a 5 anys?
 - [ ] Descripció amb el diferencial a la primera línia: **corregeix el dictat fet a mà, per foto**
 - [ ] Captures que ensenyin la correcció amb els errors classificats, no la pantalla buida
+
+### ❌ Paraules clau retirades — apunten al públic equivocat
+
+Aquest fitxer va llistar *"dictats en català"*, *"dictat català"* i *"practicar català"*.
+**No es fan servir**: es van invalidar el 29-08 en fixar que el públic són **docents**, no
+estudiants. Atraurien gent que no torna, i la retenció és justament el que Play mesura.
+
+La direcció correcta i les dades reals de mercat són a **#20** i a
+`docs/sections/publicacio/FITXA_PLAY.md`, on en Gerard separa les paraules **comprovades**
+de les que són **hipòtesi**.
+
+### El context que ho canvia tot, i la seva trampa
+
+En Gerard va verificar per què un docent buscaria això **ara**: des del curs **2025-26** el
+**C2 és requisit** per entrar a la borsa docent, i **només el 25% del professorat el té** —
+unes **70.000 persones** a Catalunya amb una necessitat obligatòria i amb data.
+
+Però: **l'app no prepara l'examen de C2** (l'Àrea 2 és d'opció múltiple, no un dictat).
+Prometre-ho seria el mateix error que la sintaxi, i pitjor, perquè qui s'hi juga la plaça no
+perdona una ressenya.
+
+**Pendent de l'Óscar** (#20): esmentar el C2 com a **context** (*"ara que el C2 és requisit
+docent…"*) sense prometre preparació d'examen, o no esmentar-lo. En Gerard recomana com a
+context.
 
 ---
 
