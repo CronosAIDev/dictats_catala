@@ -189,6 +189,21 @@ const texts = {
       text: 'La Nova Cançó va ser el moviment musical que, als anys seixanta, va reivindicar el català sota la dictadura. || El col·lectiu dels Setze Jutges va aplegar cantautors com Raimon, Maria del Mar Bonet i Lluís Llach. || «Al vent», de Raimon, es va convertir en un crit de llibertat per a tota una generació. || «L\'estaca», de Llach, va traspassar fronteres i encara avui se\'n canten versions arreu del món. || Aquells cantants van demostrar que la llengua podia ser també un instrument de resistència política.',
       description: 'Música i resistència cultural',
     },
+    // Els dos següents estan escrits a posta per carregar les classes que el
+    // banc de proves (F55) tenia magres: ela geminada, dièresi i b/v són les
+    // que separen un model que sap català d'un que arrossega el castellà (F58).
+    {
+      id: 'a11',
+      title: 'L\'aquarel·la del col·legi',
+      text: 'La mestra intel·ligent del col·legi ens va il·lusionar amb una col·lecció d\'aquarel·les excel·lents. || Els veïns arribats de països llunyans van portar raïm dolç i aigües fresques per celebrar-ho. || Cal saber trobar la tranquil·litat quan les qüestions freqüents es tornen ambigües. || Avui hem d\'escriure una novel·la breu sobre les ruïnes mil·lenàries que il·luminen la nostra memòria. || M\'agrada provar de canviar cada síl·laba sense haver de cancel·lar la il·lusió de ningú.',
+      description: 'Text carregat d\'ela geminada i dièresi',
+    },
+    {
+      id: 'a12',
+      title: 'La plaça del veïnat',
+      text: 'A la plaça del veïnat, la cançó de març anuncia amb força l\'inici de la primavera. || Cal esforç per aixecar el castell, i el cap de colla sap què és la traïció d\'un vent sobtat. || El nen feliç menja dolços mentre la germana gran llegeix la lliçó amb veu suau. || Hem de provar de trobar raïm madur i llengües de gat per berenar avui mateix. || S\'ha de saber guanyar la confiança dels pingüins de l\'aquari: sense paciència, ni ells no s\'hi acosten.',
+      description: 'Text carregat de ce trencada, dièresi i b/v',
+    },
   ],
 };
 
