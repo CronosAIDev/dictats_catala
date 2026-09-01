@@ -6,6 +6,7 @@
   <title>Dictats — Mòbil</title>
   <link rel="stylesheet" href="/style.css">
   <meta name="theme-color" content="#2563eb">
+  <link rel="icon" href="/icons/icon-192.png">
   <link rel="manifest" href="/manifest.webmanifest">
   <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
   <meta name="mobile-web-app-capable" content="yes">
@@ -347,6 +348,13 @@
       };
       revisa();
       window.speechSynthesis.onvoiceschanged = revisa;
+      // Si al cap de 2,5 s encara no hi ha CAP veu, `revisa` no haurà dit res:
+      // el dispositiu no té motor de síntesi i el dictat quedaria mut sense explicació.
+      setTimeout(() => {
+        if (!window.speechSynthesis.getVoices().length) {
+          avisVeu('Aquest dispositiu no té cap veu de síntesi instal·lada: el dictat no sonarà. Android: Configuració → Sistema → Idiomes → Sortida de síntesi de veu.');
+        }
+      }, 2500);
     }
     function avisVeu(text) { $('m-voice-warning').textContent = text; $('m-voice-warning').style.display = ''; }
 
