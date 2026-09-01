@@ -181,6 +181,14 @@ function comprovaVeu() {
   };
   revisa();
   window.speechSynthesis.onvoiceschanged = revisa;
+  // Si al cap de 2,5 s encara no hi ha CAP veu, `revisa` no haurà dit res:
+  // el dispositiu no té motor de síntesi i el dictat quedaria mut sense explicació.
+  setTimeout(() => {
+    if (!window.speechSynthesis.getVoices().length) {
+      mostraAvisVeu('Aquest dispositiu no té cap veu de síntesi instal·lada: el dictat no sonarà. '
+        + 'Android: Configuració → Sistema → Idiomes → Sortida de síntesi de veu.');
+    }
+  }, 2500);
 }
 
 function mostraAvisVeu(text) {
