@@ -328,6 +328,33 @@ async function savePersonalText() {
   }
 }
 
+// ── F44: que la pantalla no s'apagui a mitja frase i talli la veu ──
+// Sense suport (navegador vell, connexió no segura) no fa res: tot sona igual.
+const pantalla = {
+  lock: null,
+  volem: false,
+  demanant: false,
+  async agafa() {
+    this.volem = true;
+    if (!('wakeLock' in navigator) || this.lock || this.demanant) return;
+    this.demanant = true;
+    try {
+      this.lock = await navigator.wakeLock.request('screen');
+      this.lock.addEventListener('release', () => { pantalla.lock = null; });
+      if (!this.volem) this.deixa(); // el dictat ha acabat mentre es demanava
+    } catch { /* estalvi d'energia o permís denegat: el dictat segueix */ }
+    this.demanant = false;
+  },
+  deixa() {
+    this.volem = false;
+    if (this.lock) { this.lock.release(); this.lock = null; }
+  },
+};
+// El sistema allibera el lock en amagar la pestanya: en tornar, es recupera.
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible' && pantalla.volem) pantalla.agafa();
+});
+
 // ── El dictat: només pintar el que diu el motor ───────────
 function iniciaDictat() {
   if (!window.speechSynthesis) { alert('Aquest navegador no suporta la síntesi de veu. Prova amb Chrome.'); return; }
@@ -341,6 +368,10 @@ function iniciaDictat() {
 function pintaEstat(info) {
   $('progress-bar').style.width = info.progres + '%';
   state.dictationDone = info.estat === 'fet';
+
+  // Pantalla encesa mentre el dictat corre (llegint o pausa d'escriptura)
+  if (info.estat === 'llegint' || info.estat === 'pausa') pantalla.agafa();
+  else pantalla.deixa();
 
   if (info.estat === 'llegint') {
     $('phrase-indicator').textContent = `Frase ${info.frase + 1} de ${info.total}`;
@@ -366,7 +397,8 @@ function pintaEstat(info) {
 }
 
 function resetDictationUI() {
-  motor.atura();
+  motor.atura(); // atura() no avisa el callback: el lock es deixa aquí
+  pantalla.deixa();
   state.dictationDone = false;
   state.photoFile = null;
   $('progress-bar').style.width = '0%';
