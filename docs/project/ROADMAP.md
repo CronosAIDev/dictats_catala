@@ -92,7 +92,7 @@ Aquí está la diferencia entre lo que la app es y lo que dice el objetivo.
 | ID | Feature | Descripción | Estado | Prioridad |
 |----|---------|-------------|--------|-----------|
 | F31 | Diff determinista en el servidor | El prompt le pide a Claude el índice `position` de cada palabra fallada; cuando se desvía, la app subraya en rojo una palabra correcta. Alinear las palabras en el servidor y dejarle a Claude solo clasificar y explicar: posiciones exactas, resultado inmediato, corrección que sobrevive a un fallo de la API y modelo más barato (responde también a F14) | **Hecho (v6)** | Alta |
-| F32 | Ver tu texto al lado del correcto | La pantalla de resultados solo pinta el original marcado; lo que escribiste no aparece (salvo en modo foto). Los dos textos enfrentados, palabra contra palabra | Pendiente | Alta |
+| F32 | Ver tu texto al lado del correcto | Hecho (v11): dos paneles enfrentados («El text original» / «El que has escrit») en app y móvil. El texto del alumno se reconstruye de `position/span/userWrote`; omisiones como hueco `___`, palabras de más al final, tooltip con la corrección. Verificado headless: sustitución, omisión y panel oculto sin corrección | **Hecho** | Alta |
 | F33 | Resultado progresivo | Entre "Corregir" y ver algo hay una llamada a Opus con `max_tokens: 4096` y un spinner mudo. Con F31 el recuento y las marcas salen al instante y las explicaciones llegan después | Pendiente | Media |
 
 ### Bloque D — Constancia y sentido de progreso (v8)
