@@ -102,20 +102,20 @@ Aquí está la diferencia entre lo que la app es y lo que dice el objetivo.
 | F34 | Racha y objetivo diario | "Llevas 4 días seguidos", con un objetivo pequeño (un dictado o tres micro-ejercicios). Cobra sentido con F28: una racha que exige 10 minutos se rompe el primer día ocupado | Pendiente | Media |
 | F35 | Marcar textos hechos y proponer el siguiente | La lista de 30 textos se ve igual el primer día que el trigésimo. Marca de hecho con resultado y un texto destacado como "lo siguiente". Los datos ya están en `user_progress` | Pendiente | Media |
 | F36 | Progreso normalizado + gráfico | La media de errores va redondeada a entero (2,4 y 2,6 se ven igual) y compara dictados de 34 palabras con otros de 84. Errores por 100 palabras, con curva por semana. **No toca la escala motivadora**, que va por nº de errores por decisión de producto (`CLAUDE.md`). Concreta F12 | Pendiente | Media |
-| F37 | Historial cronológico | `/api/profile` ordena por `errors_count ASC`, documentado como intencionado en el CHANGELOG 1.0.0. Pero la pantalla se llama "Historial" y el `LIMIT 50` sobre ese orden puede dejar fuera el dictado recién hecho. Dos pestañas, "Recents" y "Millors" | Pendiente | Media |
+| F37 | Historial cronológico | Hecho (v11): dos pestañas «Recents» (por fecha) y «Millors» (por errores) en `/profile`; el servidor devuelve las dos listas y las estadísticas salen de TODO el historial, no de los 50 pintados. Verificado headless: cada pestaña ordena distinto | **Hecho** | Media |
 
 ### Bloque E — Accesibilidad y remates
 
 | ID | Feature | Descripción | Estado | Prioridad |
 |----|---------|-------------|--------|-----------|
-| F38 | El móvil bloquea el zoom | `maximum-scale=1.0` en el viewport de `/mobile`, en una app de leer y escribir texto | Pendiente | Media |
+| F38 | El móvil bloquea el zoom | Hecho (v11): retirado `maximum-scale=1.0` del viewport de `/mobile`. Verificado headless | **Hecho** | Media |
 | F39 | Nada de lo que cambia se anuncia | Ni un atributo `aria-` en todo el frontend; el estado del dictado solo cambia visualmente. `aria-live="polite"` y foco visible. Es una app que se usa con los oídos | Pendiente | Media |
 | F40 | Modo oscuro | Ninguna regla `prefers-color-scheme` en `style.css`. Las variables de color ya están todas en `:root` | Pendiente | Baja |
 | F41 | Escapar el título de los textos personales | `loadTextList()` mete `t.title` crudo en `innerHTML`; el resto de la pantalla sí usa `escapeHtml()`. Solo afecta a la propia cuenta | **Hecho (v6)** | Media |
 | F42 | Editar textos personales | Solo se pueden crear y borrar: una errata obliga a rehacer el texto entero. Y crearlos desde el móvil, que hoy no se puede | Pendiente | Baja |
 | F43 | Buscar y filtrar en la lista de textos | Son 30 y van a ser más | Pendiente | Baja |
 | F44 | La pantalla se apaga a mitad del dictado | En el móvil la síntesis de voz se corta al bloquearse la pantalla. Screen Wake Lock mientras dura el dictado | Pendiente | Media |
-| F49 | El botón «Sortir» de `/profile` no hace nada en una cuenta nueva | `init()` hace `return` cuando el historial está vacío, antes de registrar el listener de `btn-logout` (`public/profile.html`). Anterior a v6; se arregla moviendo el listener arriba | Pendiente | Media |
+| F49 | El botón «Sortir» de `/profile` no hace nada en una cuenta nueva | Hecho (v11): el listener de `btn-logout` va fuera de `init()`. Verificado headless con historial vacío: click → `/api/logout` → redirige a `/login` | **Hecho** | Media |
 | F50 | La barra del rango sale vacía cuando el margen te protege | Con 473 puntos y rango Manilles (umbral 500), el margen anti-yoyó mantiene el rango pero `progres` sale negativo y se dibuja al 0 %: se lee como si estuviera roto. Además desaprovecha la tensión — decir «estàs 27 punts per sota de Manilles» aprieta más que una barra muda | Pendiente | Media |
 
 ### Bloque G — Publicación en Google Play (gameplan F51)
