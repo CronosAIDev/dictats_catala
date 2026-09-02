@@ -504,6 +504,7 @@ function renderSenseCorreccio() {
   $('feedback-box').textContent = 'Bon treball! Has completat el dictat.';
   $('rank-block').style.display = 'none';
   $('original-marked').innerHTML = textNet().split(/\s+/).map(w => `<span class="word-ok">${escapeHtml(w)}</span>`).join(' ');
+  $('user-marked-block').style.display = 'none'; // sense correcció no hi ha text de l'alumne
 }
 
 function fitxaError(err) {
@@ -561,6 +562,32 @@ function pintaRang(rank) {
   }
 }
 
+// F32: reconstrueix el que va escriure l'alumne, alineat amb l'original, a
+// partir de position/span/userWrote que ja calcula el servidor. Les paraules
+// de més no tenen posició a l'original i van al final, marcades.
+function pintaElTeu(correction, paraules) {
+  const avisos = correction.warnings || [];
+  const tots = (correction.errors || []).concat(avisos);
+  const perPosicio = {};
+  tots.forEach(e => { if (e.position != null && !(e.position in perPosicio)) perPosicio[e.position] = e; });
+
+  const trossos = [];
+  for (let i = 0; i < paraules.length;) {
+    const e = perPosicio[i];
+    if (!e) { trossos.push(`<span class="word-ok">${escapeHtml(paraules[i])}</span>`); i++; continue; }
+    const classe = avisos.includes(e) ? 'word-warning' : 'word-error';
+    const titol = ` title="${escapeHtml('Tocava: ' + (e.original || '') + (e.explanation ? ' — ' + e.explanation : ''))}"`;
+    trossos.push(e.userWrote
+      ? `<span class="${classe}"${titol}>${escapeHtml(e.userWrote)}</span>`
+      : `<span class="word-gap"${titol}>___</span>`);
+    i += e.span || 1;
+  }
+  tots.filter(e => e.position == null && e.userWrote).forEach(e => {
+    trossos.push(`<span class="word-error" title="Paraula de més">${escapeHtml(e.userWrote)}</span>`);
+  });
+  return trossos.join(' ');
+}
+
 function renderResults(correction) {
   const errors = correction.errors || [];
   const warnings = correction.warnings || [];
@@ -601,10 +628,14 @@ function renderResults(correction) {
   errors.forEach(e => pinta(e, 'word-error'));
   warnings.forEach(e => pinta(e, 'word-warning'));
 
-  $('original-marked').innerHTML = textNet().split(/\s+/).map((word, i) => {
+  const paraules = textNet().split(/\s+/);
+  $('original-marked').innerHTML = paraules.map((word, i) => {
     const titol = explicacions[i] ? ` title="${escapeHtml(explicacions[i])}"` : '';
     return `<span class="${marques[i] || 'word-ok'}"${titol}>${escapeHtml(word)}</span>`;
   }).join(' ');
+
+  $('user-marked-block').style.display = '';
+  $('user-marked').innerHTML = pintaElTeu(correction, paraules);
 
   $('errors-section').style.display = errors.length ? '' : 'none';
   if (errors.length) $('errors-list-items').innerHTML = errors.map(fitxaError).join('');

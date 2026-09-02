@@ -2,6 +2,7 @@ const express = require('express');
 const multer = require('multer');
 const Anthropic = require('@anthropic-ai/sdk');
 const requireAuth = require('../middleware/requireAuth');
+const limitaCorreccions = require('../middleware/limitaCorreccions');
 const db = require('../lib/db');
 const { compara } = require('../lib/diff');
 const rang = require('../lib/rang');
@@ -238,7 +239,7 @@ function desa(email, correccio, { level, textId, textTitle }) {
   }
 }
 
-router.post('/correct', requireAuth, async (req, res) => {
+router.post('/correct', requireAuth, limitaCorreccions, async (req, res) => {
   const { originalText, userText, level, textId, textTitle, punctuationDictated } = req.body;
   if (!originalText || !userText) return res.status(400).json({ error: 'Falten dades' });
 
@@ -265,7 +266,7 @@ Transcriu EXACTAMENT el que hi veus, respectant l'ortografia, els accents, les m
 Retorna NOMÉS aquest JSON, sense cap altre text:
 {"transcription": "<el text transcrit>"}`;
 
-router.post('/correct-image', requireAuth, upload.single('photo'), async (req, res) => {
+router.post('/correct-image', requireAuth, limitaCorreccions, upload.single('photo'), async (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'Cal adjuntar una foto' });
   const { originalText, level, textId, textTitle, punctuationDictated } = req.body;
   if (!originalText) return res.status(400).json({ error: 'Falta el text original' });

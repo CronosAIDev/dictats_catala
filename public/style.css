@@ -440,6 +440,23 @@ body {
 }
 .word-ok { color: inherit; }
 
+/* F32 — els dos textos enfrontats */
+.compare-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px; }
+.compare-grid .original-marked { margin-bottom: 0; height: 100%; }
+.compare-label {
+  font-size: 0.75rem; font-weight: 600; text-transform: uppercase;
+  letter-spacing: 0.05em; color: var(--text-muted); margin-bottom: 6px;
+}
+@media (max-width: 720px) { .compare-grid { grid-template-columns: 1fr; } }
+.word-gap {
+  background: var(--error-light);
+  color: var(--error);
+  border-bottom: 2px dashed var(--error);
+  border-radius: 2px;
+  padding: 0 6px;
+  cursor: pointer;
+}
+
 .errors-list { margin-bottom: 24px; }
 .errors-list h3 {
   font-size: 0.8125rem;
