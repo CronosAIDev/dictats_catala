@@ -1,11 +1,13 @@
 {
   "name": "dictats_catala",
-  "version": "1.1.1",
+  "version": "1.2.0",
   "description": "Dictats en catala",
   "main": "index.js",
   "scripts": {
     "start": "node src/index.js",
-    "dev": "node --watch src/index.js"
+    "dev": "node --watch src/index.js",
+    "test": "node test/diff.test.js && node test/rang.test.js && node test/dictat.test.js",
+    "benchmark": "node scripts/benchmark/puntua.js"
   },
   "repository": {
     "type": "git",
@@ -19,7 +21,7 @@
   },
   "homepage": "https://github.com/CronosAIDev/dictats_catala#readme",
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.80.0",
+    "@anthropic-ai/sdk": "^0.120.0",
     "bcrypt": "^6.0.0",
     "better-sqlite3": "^12.8.0",
     "dotenv": "^17.3.1",
