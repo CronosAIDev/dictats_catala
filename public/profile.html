@@ -66,6 +66,10 @@
           <div class="card-header">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
             <span class="card-title">Historial de dictats</span>
+            <div style="margin-left:auto;display:flex;gap:6px">
+              <button class="btn btn-primary btn-sm" id="tab-recents">Recents</button>
+              <button class="btn btn-ghost btn-sm" id="tab-millors">Millors</button>
+            </div>
           </div>
           <div class="card-body" style="padding:0">
             <div id="history-list"></div>
@@ -76,6 +80,12 @@
   </div>
 
   <script>
+    // El listener va fora d'init(): amb l'historial buit init() fa return abans d'arribar-hi
+    document.getElementById('btn-logout').addEventListener('click', async () => {
+      await fetch('/api/logout', { method: 'POST' });
+      window.location.href = '/login';
+    });
+
     function escapeHtml(str) {
       return String(str ?? '')
         .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -145,33 +155,44 @@
         </div>
       `;
 
-      // History list
-      if (data.history.length === 0) {
-        document.getElementById('history-list').innerHTML =
-          '<div style="padding:24px;color:var(--text-muted);font-size:.875rem">Encara no has fet cap dictat.</div>';
-        return;
-      }
-
+      // Historial amb dues pestanyes: Recents (per data) i Millors (per errors)
       const levelLabel = { basic:'Bàsic', intermedi:'Intermedi', avancat:'Avançat', personal:'Personal', unknown:'—' };
 
-      document.getElementById('history-list').innerHTML = data.history.map(r => `
-        <div class="history-item">
-          <div class="history-meta">
-            <span class="history-title">${escapeHtml(r.text_title || r.text_id)}</span>
-            <span class="history-level">${escapeHtml(levelLabel[r.level] || r.level)}</span>
+      const pinta = llista => {
+        if (llista.length === 0) {
+          document.getElementById('history-list').innerHTML =
+            '<div style="padding:24px;color:var(--text-muted);font-size:.875rem">Encara no has fet cap dictat.</div>';
+          return;
+        }
+        document.getElementById('history-list').innerHTML = llista.map(r => `
+          <div class="history-item">
+            <div class="history-meta">
+              <span class="history-title">${escapeHtml(r.text_title || r.text_id)}</span>
+              <span class="history-level">${escapeHtml(levelLabel[r.level] || r.level)}</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:12px">
+              <span class="scale-badge ${r.scale.cls}">${r.scale.label}</span>
+              <span class="history-errors">${r.errors_count} error${r.errors_count !== 1 ? 's' : ''}</span>
+              <span class="history-date">${new Date(r.completed_at).toLocaleDateString('ca-ES', {day:'2-digit',month:'short',year:'numeric'})}</span>
+            </div>
           </div>
-          <div style="display:flex;align-items:center;gap:12px">
-            <span class="scale-badge ${r.scale.cls}">${r.scale.label}</span>
-            <span class="history-errors">${r.errors_count} error${r.errors_count !== 1 ? 's' : ''}</span>
-            <span class="history-date">${new Date(r.completed_at).toLocaleDateString('ca-ES', {day:'2-digit',month:'short',year:'numeric'})}</span>
-          </div>
-        </div>
-      `).join('');
+        `).join('');
+      };
 
-      document.getElementById('btn-logout').addEventListener('click', async () => {
-        await fetch('/api/logout', { method: 'POST' });
-        window.location.href = '/login';
-      });
+      const tabs = {
+        'tab-recents': data.history,
+        'tab-millors': data.millors || data.history,
+      };
+      for (const id of Object.keys(tabs)) {
+        document.getElementById(id).addEventListener('click', () => {
+          for (const altre of Object.keys(tabs)) {
+            document.getElementById(altre).className =
+              `btn ${altre === id ? 'btn-primary' : 'btn-ghost'} btn-sm`;
+          }
+          pinta(tabs[id]);
+        });
+      }
+      pinta(data.history);
     }
 
     init();

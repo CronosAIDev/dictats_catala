@@ -318,26 +318,35 @@ router.post('/correct-image', requireAuth, upload.single('photo'), async (req, r
 // ── Perfil / historial ───────────────────────────────────────
 router.get('/profile', requireAuth, (req, res) => {
   const email = req.session.profile.email;
-  const rows = db.prepare(`
+  const selecciona = ordre => db.prepare(`
     SELECT text_id, text_title, level, score, errors_count, completed_at
     FROM user_progress
     WHERE email = ?
-    ORDER BY errors_count ASC, completed_at DESC
+    ORDER BY ${ordre}
     LIMIT 50
-  `).all(email);
+  `).all(email).map(r => ({ ...r, scale: getScale(r.errors_count || 0) }));
 
-  const withScale = rows.map(r => ({ ...r, scale: getScale(r.errors_count || 0) }));
+  const recents = selecciona('completed_at DESC, id DESC');
+  const millors = selecciona('errors_count ASC, completed_at DESC');
 
-  const total = rows.length;
-  const avgErrors = total ? Math.round(rows.reduce((s, r) => s + (r.errors_count || 0), 0) / total) : 0;
+  // Les xifres surten de tot l'historial, no dels 50 que es pinten
+  const agregats = db.prepare(`
+    SELECT COUNT(*) AS total, MIN(errors_count) AS best, AVG(errors_count) AS mitjana
+    FROM user_progress WHERE email = ?
+  `).get(email);
 
   res.json({
     email,
     first_name: req.session.profile.first_name,
-    stats: { total, avgErrors, bestErrors: rows[0]?.errors_count ?? null },
+    stats: {
+      total: agregats.total,
+      avgErrors: agregats.total ? Math.round(agregats.mitjana) : 0,
+      bestErrors: agregats.best ?? null,
+    },
     rank: estatDeRang(email),
     ranks: rang.RANGS.map(r => ({ id: r.id, nom: r.nom, punts: r.punts, que: r.que })),
-    history: withScale,
+    history: recents,
+    millors,
   });
 });
 
