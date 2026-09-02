@@ -138,7 +138,7 @@ Aquí solo lo que es trabajo de código; las decisiones y la ficha de Play viven
 | ID | Feature | Descripción | Estado | Prioridad |
 |----|---------|-------------|--------|-----------|
 | F12 | Estadísticas avanzadas | Gráficos de progreso por nivel y semana. Lo concreta F36 | Pendiente | Baja |
-| F14 | Rate limit en `/api/correct` y `/api/correct-image` | Solo protegidos por `requireAuth`; sin límite de llamadas a la API de Anthropic (coste, no seguridad de datos). F31 reduce el coste por llamada | Pendiente | Baja |
+| F14 | Rate limit en `/api/correct` y `/api/correct-image` | Hecho (v11): `limitaCorreccions` — ventana deslizante en memoria por email, 30/hora (`DICTATS_MAX_CORRECCIONS_HORA`), 429 con mensaje de cuánto falta. Test unitario en `test/limits.test.js` | **Hecho** | Baja |
 | F15 | Rotación de logs PM2 | `/var/dictats/logs/{out,err}-3.log` sin rotación configurada | Pendiente | Baja |
 
 ---
