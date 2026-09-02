@@ -114,7 +114,7 @@ Aquí está la diferencia entre lo que la app es y lo que dice el objetivo.
 | F41 | Escapar el título de los textos personales | `loadTextList()` mete `t.title` crudo en `innerHTML`; el resto de la pantalla sí usa `escapeHtml()`. Solo afecta a la propia cuenta | **Hecho (v6)** | Media |
 | F42 | Editar textos personales | Solo se pueden crear y borrar: una errata obliga a rehacer el texto entero. Y crearlos desde el móvil, que hoy no se puede | Pendiente | Baja |
 | F43 | Buscar y filtrar en la lista de textos | Son 30 y van a ser más | Pendiente | Baja |
-| F44 | La pantalla se apaga a mitad del dictado | En el móvil la síntesis de voz se corta al bloquearse la pantalla. Screen Wake Lock mientras dura el dictado | Pendiente | Media |
+| F44 | La pantalla se apaga a mitad del dictado | Hecho (v11): Screen Wake Lock mientras el dictado corre (`llegint`/`pausa`), soltado al pausar/acabar/salir, recuperado al volver a la pestaña. En `app.js` y `mobile.html`; sin soporte degrada a nada. Verificado headless con `wakeLock` simulado: pedir→soltar→repedir→soltar. Pendiente sin verificar: comportamiento en Android físico | **Hecho** | Media |
 | F49 | El botón «Sortir» de `/profile` no hace nada en una cuenta nueva | Hecho (v11): el listener de `btn-logout` va fuera de `init()`. Verificado headless con historial vacío: click → `/api/logout` → redirige a `/login` | **Hecho** | Media |
 | F50 | La barra del rango sale vacía cuando el margen te protege | Con 473 puntos y rango Manilles (umbral 500), el margen anti-yoyó mantiene el rango pero `progres` sale negativo y se dibuja al 0 %: se lee como si estuviera roto. Además desaprovecha la tensión — decir «estàs 27 punts per sota de Manilles» aprieta más que una barra muda | Pendiente | Media |
 
