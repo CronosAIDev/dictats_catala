@@ -2,6 +2,12 @@
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
+/* Els colors de text estan mesurats, no triats a ull: cadascun arriba a 4,5:1
+   sobre TOTS els fons on l'app el fa servir de veritat (WCAG 2.1 AA), amb
+   marge. Es comprova amb `node test/f39.contrast.js`, que ho mesura al
+   navegador. Abans d'això, quatre no hi arribaven — l'avís de «no hi ha veu»
+   es quedava a 3,07:1, que és el més important que diu l'app.
+   Si en canvies cap, torna a passar la mesura. */
 :root {
   --bg: #f8fafc;
   --surface: #ffffff;
@@ -10,12 +16,12 @@
   --primary-hover: #1d4ed8;
   --primary-light: #eff6ff;
   --text: #0f172a;
-  --text-muted: #64748b;
-  --success: #16a34a;
+  --text-muted: #5b6675;
+  --success: #15803d;
   --success-light: #f0fdf4;
-  --error: #dc2626;
+  --error: #b91c1c;
   --error-light: #fef2f2;
-  --warning: #d97706;
+  --warning: #b45309;
   --warning-light: #fffbeb;
   --radius: 8px;
   --shadow: 0 1px 3px rgba(0,0,0,.08), 0 1px 2px rgba(0,0,0,.04);
@@ -392,8 +398,8 @@ body {
 .scale-label { font-size: 2.5rem; font-weight: 800; line-height: 1; }
 .scale-sub { font-size: 1rem; color: var(--text-muted); margin-top: 4px; }
 
-.scale-excellent { color: #16a34a; }
-.scale-great     { color: #16a34a; }
+.scale-excellent { color: var(--success); }
+.scale-great     { color: var(--success); }
 .scale-good      { color: var(--primary); }
 .scale-ok        { color: var(--warning); }
 .scale-keep      { color: var(--error); }
