@@ -783,3 +783,53 @@ body {
 .btn-avis.enviat { opacity: 1; color: var(--success); cursor: default; }
 .error-explanation { display: flex; align-items: baseline; gap: 2px; }
 .error-explanation > span { flex: 1; }
+
+/* ── Accessibilitat (F39) ────────────────────────────────────
+   Aquesta és una app que es fa servir amb les orelles: algú que la faci servir
+   amb lector de pantalla n'és usuari de ple dret, no un cas límit. Fins ara no
+   hi havia ni un atribut `aria-` a tot el frontend i el focus del teclat era el
+   que posés el navegador per defecte, que a sobre d'un fons blanc gairebé no es
+   veu.
+
+   Els canvis d'estat es diuen a `aria-live="polite"` i mai `assertive`: mentre
+   es dicta hi ha una veu sintètica parlant, i interrompre-la a cada frase faria
+   la pantalla inservible en comptes d'accessible. */
+
+/* El focus s'ha de veure sempre, i sobre qualsevol fons. */
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible,
+[tabindex]:focus-visible {
+  outline: 3px solid var(--primary);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* El focus que es mou per codi —al resultat d'una correcció— no ha de pintar
+   un requadre com si l'hagués posat el teclat: qui hi arriba amb el ratolí no
+   entendria d'on surt. El lector de pantalla sí que el llegeix igual. */
+[tabindex="-1"]:focus { outline: none; }
+
+/* Text que només llegeix el lector de pantalla. No es pot fer amb
+   `display:none` ni `visibility:hidden`: això l'amagaria també per a ell. */
+.nomes-lector {
+  position: absolute;
+  width: 1px; height: 1px;
+  margin: -1px; padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Qui ha demanat menys moviment al sistema no vol que això li tremoli. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

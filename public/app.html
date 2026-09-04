@@ -13,6 +13,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="Dictats">
+  <script src="/a11y.js" defer></script>
   <script src="/rang.js" defer></script>
   <script src="/explicacions.js" defer></script>
   <script src="/anim.js" defer></script>
@@ -116,10 +117,15 @@
             </div>
 
             <!-- Progress -->
-            <div class="progress-bar-wrap">
-              <div class="progress-bar-fill" id="progress-bar"></div>
+            <!-- Una sola regió viva per a l'estat, la barra i la frase: canvien
+                 alhora i, separades, el lector diria tres cops el mateix. -->
+            <div role="status" aria-live="polite" aria-atomic="true">
+              <div class="progress-bar-wrap" role="progressbar"
+                   aria-label="Progrés del dictat" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+                <div class="progress-bar-fill" id="progress-bar"></div>
+              </div>
+              <div class="phrase-indicator" id="phrase-indicator"></div>
             </div>
-            <div class="phrase-indicator" id="phrase-indicator"></div>
 
             <div class="dictation-settings">
               <label class="setting" for="speech-rate">
@@ -134,15 +140,15 @@
               <span class="setting-hint">Ctrl+Enter salta a la frase seg&uuml;ent</span>
             </div>
 
-            <div id="voice-warning" class="alert alert-warning" style="display:none"></div>
+            <div id="voice-warning" class="alert alert-warning" style="display:none" role="alert"></div>
 
             <!-- Mode toggle -->
             <div class="mode-toggle">
-              <button class="mode-btn active" id="mode-editor" data-mode="editor">
+              <button class="mode-btn active" id="mode-editor" data-mode="editor" aria-pressed="true">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M7 8h10M7 12h7"/></svg>
                 Editor de text
               </button>
-              <button class="mode-btn" id="mode-paper" data-mode="paper">
+              <button class="mode-btn" id="mode-paper" data-mode="paper" aria-pressed="false">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
                 Paper (foto opcional)
               </button>
@@ -188,7 +194,7 @@
           </div>
         </div>
 
-        <div id="correction-loading" style="display:none;text-align:center;padding:32px;color:var(--text-muted)">
+        <div id="correction-loading" style="display:none;text-align:center;padding:32px;color:var(--text-muted)" role="status" aria-live="polite">
           <div class="spinner" style="margin:0 auto 12px"></div>
           <div id="loading-msg">Corregint el dictat…</div>
         </div>
@@ -220,7 +226,8 @@
                 </div>
                 <span class="rank-points" id="rank-points"></span>
               </div>
-              <div class="rank-bar"><div class="rank-bar-fill" id="rank-bar"></div></div>
+              <div class="rank-bar" role="progressbar" aria-label="Progrés cap al rang següent"
+                   aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><div class="rank-bar-fill" id="rank-bar"></div></div>
               <div class="rank-next" id="rank-next"></div>
             </div>
           </div>

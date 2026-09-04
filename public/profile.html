@@ -13,6 +13,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="Dictats">
+  <script src="/a11y.js" defer></script>
   <script src="/rang.js" defer></script>
   <script src="/pwa.js" defer></script>
 </head>
@@ -51,7 +52,8 @@
               </div>
               <span class="rank-points" id="rank-points"></span>
             </div>
-            <div class="rank-bar"><div class="rank-bar-fill" id="rank-bar"></div></div>
+            <div class="rank-bar" role="progressbar" aria-label="Progrés cap al rang següent"
+                 aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><div class="rank-bar-fill" id="rank-bar"></div></div>
             <div class="rank-next" id="rank-next"></div>
           </div>
           <div style="border-top:1px solid var(--border);padding:8px 0">
@@ -108,7 +110,8 @@
       document.getElementById('rank-what').textContent = rank.rang.que;
       document.getElementById('rank-points').textContent = `${rank.punts} punts`;
       const pas = window.Rang.seguentPas(rank);
-      document.getElementById('rank-bar').style.width = pas.amplada + '%';
+      if (window.A11y) window.A11y.progres(document.getElementById('rank-bar'), pas.amplada);
+      else document.getElementById('rank-bar').style.width = pas.amplada + '%';
       document.getElementById('rank-next').textContent = pas.text;
       document.getElementById('rank-next').classList.toggle('rank-next-avis', pas.avis);
 

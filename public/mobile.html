@@ -13,6 +13,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="Dictats">
+  <script src="/a11y.js" defer></script>
   <script src="/rang.js" defer></script>
   <script src="/explicacions.js" defer></script>
   <script src="/anim.js" defer></script>
@@ -90,8 +91,8 @@
     <header class="mobile-header">
       <span class="mobile-logo">✏️ Dictats en Català</span>
       <div style="display:flex;gap:8px">
-        <a href="/profile" class="btn btn-ghost btn-sm" title="El meu progrés">📊</a>
-        <a href="/" class="btn btn-ghost btn-sm" title="Versió d'escriptori">🖥️</a>
+        <a href="/profile" class="btn btn-ghost btn-sm" title="El meu progrés" aria-label="El meu progrés">📊</a>
+        <a href="/" class="btn btn-ghost btn-sm" title="Versió d'escriptori" aria-label="Versió d'escriptori">🖥️</a>
         <button class="btn btn-ghost btn-sm" id="m-logout">Sortir</button>
       </div>
     </header>
@@ -119,11 +120,12 @@
             <h3 id="m-dictation-title" style="font-size:1rem;font-weight:600;margin-bottom:4px"></h3>
             <div id="m-level-badge" style="font-size:.8125rem;color:var(--text-muted);margin-bottom:16px"></div>
 
-            <div id="m-status-badge" style="margin-bottom:12px"></div>
+            <div id="m-status-badge" style="margin-bottom:12px" role="status" aria-live="polite" aria-atomic="true"></div>
             <div class="mobile-progress">
-              <div class="progress-bar-wrap"><div class="progress-bar-fill" id="m-progress-bar"></div></div>
+              <div class="progress-bar-wrap" role="progressbar" aria-label="Progrés del dictat"
+                   aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><div class="progress-bar-fill" id="m-progress-bar"></div></div>
             </div>
-            <div class="mobile-phrase-info" id="m-phrase-indicator"></div>
+            <div class="mobile-phrase-info" id="m-phrase-indicator" aria-live="off"></div>
 
             <div style="display:flex;flex-direction:column;gap:10px">
               <button class="big-btn big-btn-primary" id="m-btn-start">▶ Iniciar dictat</button>
@@ -147,7 +149,7 @@
               </label>
             </div>
 
-            <div id="m-voice-warning" class="alert alert-warning" style="display:none"></div>
+            <div id="m-voice-warning" class="alert alert-warning" style="display:none" role="alert"></div>
           </div>
         </div>
 
@@ -155,8 +157,8 @@
         <div class="card" style="margin-bottom:16px">
           <div class="card-body">
             <div class="mode-toggle">
-              <button class="mode-btn active" id="m-mode-write">Escriure aquí</button>
-              <button class="mode-btn" id="m-mode-paper">Paper i foto</button>
+              <button class="mode-btn active" id="m-mode-write" aria-pressed="true">Escriure aquí</button>
+              <button class="mode-btn" id="m-mode-paper" aria-pressed="false">Paper i foto</button>
             </div>
 
             <div id="m-write-zone">
@@ -181,7 +183,7 @@
           </div>
         </div>
 
-        <div id="m-correction-loading" style="display:none;text-align:center;padding:32px;color:var(--text-muted)">
+        <div id="m-correction-loading" style="display:none;text-align:center;padding:32px;color:var(--text-muted)" role="status" aria-live="polite">
           <div class="spinner" style="margin:0 auto 12px"></div>
           <span id="m-loading-msg">Corregint el dictat…</span>
         </div>
@@ -206,7 +208,8 @@
             </div>
             <span class="rank-points" id="m-rank-points"></span>
           </div>
-          <div class="rank-bar"><div class="rank-bar-fill" id="m-rank-bar"></div></div>
+          <div class="rank-bar" role="progressbar" aria-label="Progrés cap al rang següent"
+               aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><div class="rank-bar-fill" id="m-rank-bar"></div></div>
           <div class="rank-next" id="m-rank-next"></div>
         </div>
 
@@ -432,7 +435,8 @@
       state.photoFile = null;
       $('m-dictation-title').textContent = text.title;
       $('m-level-badge').textContent = LEVEL_LABELS[state.level];
-      $('m-progress-bar').style.width = '0%';
+      if (window.A11y) window.A11y.progres($('m-progress-bar'), 0);
+      else $('m-progress-bar').style.width = '0%';
       $('m-phrase-indicator').textContent = '';
       $('m-status-badge').innerHTML = '';
       $('m-btn-start').style.display = '';
@@ -484,7 +488,8 @@
     }
 
     function pintaEstat(info) {
-      $('m-progress-bar').style.width = info.progres + '%';
+      if (window.A11y) window.A11y.progres($('m-progress-bar'), info.progres);
+      else $('m-progress-bar').style.width = info.progres + '%';
       state.dictationDone = info.estat === 'fet';
 
       // Pantalla encesa mentre el dictat corre (llegint o pausa d'escriptura)
@@ -517,6 +522,10 @@
       state.mode = mode;
       $('m-mode-write').classList.toggle('active', mode === 'write');
       $('m-mode-paper').classList.toggle('active', mode === 'paper');
+      if (window.A11y) {
+        window.A11y.premut($('m-mode-write'), mode === 'write');
+        window.A11y.premut($('m-mode-paper'), mode === 'paper');
+      }
       $('m-write-zone').style.display = mode === 'write' ? '' : 'none';
       $('m-paper-zone').style.display = mode === 'paper' ? '' : 'none';
       actualitzaBotoCorregir();
@@ -580,9 +589,22 @@
         esborraEsborrany();
         acabaCorreccio();
         renderResults(correccio);
-        // Les explicacions arriben després i tornen a pintar (F33).
-        if (window.Explicacions) window.Explicacions.demana(correccio, renderResults);
         showView('results');
+        // El focus va al resultat DESPRÉS d'ensenyar la vista: enfocar una cosa
+        // amagada no fa res, i el lector es quedaria on era.
+        if (window.A11y) {
+          window.A11y.focusA($('m-result-label'));
+          window.A11y.anuncia(`${correccio.scale.label} ${correccio.correctWords} de ${correccio.totalWords} paraules, `
+            + `${correccio.errors.length} ${correccio.errors.length === 1 ? 'error' : 'errors'}.`);
+        }
+        // Les explicacions arriben després i tornen a pintar (F33). El repintat
+        // destrueix l'element que té el focus, així que es torna a posar.
+        if (window.Explicacions) {
+          window.Explicacions.demana(correccio, (c) => {
+            if (window.A11y) window.A11y.preservantFocus(() => renderResults(c));
+            else renderResults(c);
+          });
+        }
       } catch (err) {
         acabaCorreccio();
         alert(err.message || 'Error de connexió. Torna a provar.');
@@ -605,9 +627,22 @@
         const correccio = await res.json();
         acabaCorreccio();
         renderResults(correccio);
-        // Les explicacions arriben després i tornen a pintar (F33).
-        if (window.Explicacions) window.Explicacions.demana(correccio, renderResults);
         showView('results');
+        // El focus va al resultat DESPRÉS d'ensenyar la vista: enfocar una cosa
+        // amagada no fa res, i el lector es quedaria on era.
+        if (window.A11y) {
+          window.A11y.focusA($('m-result-label'));
+          window.A11y.anuncia(`${correccio.scale.label} ${correccio.correctWords} de ${correccio.totalWords} paraules, `
+            + `${correccio.errors.length} ${correccio.errors.length === 1 ? 'error' : 'errors'}.`);
+        }
+        // Les explicacions arriben després i tornen a pintar (F33). El repintat
+        // destrueix l'element que té el focus, així que es torna a posar.
+        if (window.Explicacions) {
+          window.Explicacions.demana(correccio, (c) => {
+            if (window.A11y) window.A11y.preservantFocus(() => renderResults(c));
+            else renderResults(c);
+          });
+        }
       } catch (err) {
         acabaCorreccio();
         alert(err.message || 'Error en la correcció. Torna a provar.');
@@ -689,7 +724,8 @@
       $('m-rank-points').textContent = `${rank.punts} punts`;
 
       const pas = window.Rang.seguentPas(rank);
-      $('m-rank-bar').style.width = pas.amplada + '%';
+      if (window.A11y) window.A11y.progres($('m-rank-bar'), pas.amplada);
+      else $('m-rank-bar').style.width = pas.amplada + '%';
       $('m-rank-next').textContent = pas.text;
       $('m-rank-next').classList.toggle('rank-next-avis', pas.avis);
     }
