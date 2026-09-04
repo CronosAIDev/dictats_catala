@@ -561,13 +561,10 @@ function pintaRang(rank) {
   $('rank-what').textContent = rank.rang.que;
   $('rank-points').textContent = `${rank.punts} punts`;
 
-  if (rank.seguent) {
-    $('rank-bar').style.width = Math.max(0, Math.min(100, rank.seguent.progres)) + '%';
-    $('rank-next').textContent = `Et falten ${rank.seguent.falten} punts per a ${rank.seguent.nom}.`;
-  } else {
-    $('rank-bar').style.width = '100%';
-    $('rank-next').textContent = 'Has coronat el castell. No hi ha res més amunt.';
-  }
+  const pas = window.Rang.seguentPas(rank);
+  $('rank-bar').style.width = pas.amplada + '%';
+  $('rank-next').textContent = pas.text;
+  $('rank-next').classList.toggle('rank-next-avis', pas.avis);
 }
 
 // F32: reconstrueix el que va escriure l'alumne, alineat amb l'original, a
@@ -611,6 +608,9 @@ function renderResults(correction) {
     `${correction.correctWords ?? '—'} de ${correction.totalWords ?? '—'} paraules correctes · `
     + `${errors.length} error${errors.length !== 1 ? 's' : ''}`
     + (afegides ? ` · ${afegides} paraula${afegides !== 1 ? 'es' : ''} de més` : '');
+
+  // Ratxa, comparació amb un mateix i fites (#23). Surt de dades que ja hi eren.
+  window.Anim.pinta($('anim-block'), correction);
 
   if (correction.transcription) {
     $('result-transcription').style.display = '';

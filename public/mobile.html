@@ -13,6 +13,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="Dictats">
+  <script src="/rang.js" defer></script>
+  <script src="/anim.js" defer></script>
   <script src="/report.js" defer></script>
   <script src="/pwa.js" defer></script>
   <style>
@@ -189,6 +191,7 @@
         <div id="m-result-label" class="mobile-result-label"></div>
         <div id="m-result-sub" class="mobile-result-sub"></div>
         <div id="m-result-stats" class="mobile-result-stats"></div>
+        <div id="m-anim-block" class="anim-block" style="display:none"></div>
 
         <div id="m-rank-block" class="rank-block" style="display:none;margin:0 0 16px">
           <div class="rank-delta" id="m-rank-delta"></div>
@@ -641,6 +644,7 @@
       $('m-result-label').style.color = 'var(--primary)';
       $('m-result-sub').textContent = 'Has fet el dictat en paper.';
       $('m-result-stats').textContent = '';
+      $('m-anim-block').style.display = 'none';
       $('m-transcription').style.display = 'none';
       $('m-original-marked').innerHTML = textNet().split(/\s+/).map(w => `<span class="word-ok">${escapeHtml(w)}</span>`).join(' ');
       $('m-user-marked-block').style.display = 'none'; // sense correcció no hi ha text de l'alumne
@@ -679,13 +683,10 @@
       $('m-rank-what').textContent = rank.rang.que;
       $('m-rank-points').textContent = `${rank.punts} punts`;
 
-      if (rank.seguent) {
-        $('m-rank-bar').style.width = Math.max(0, Math.min(100, rank.seguent.progres)) + '%';
-        $('m-rank-next').textContent = `Et falten ${rank.seguent.falten} punts per a ${rank.seguent.nom}.`;
-      } else {
-        $('m-rank-bar').style.width = '100%';
-        $('m-rank-next').textContent = 'Has coronat el castell.';
-      }
+      const pas = window.Rang.seguentPas(rank);
+      $('m-rank-bar').style.width = pas.amplada + '%';
+      $('m-rank-next').textContent = pas.text;
+      $('m-rank-next').classList.toggle('rank-next-avis', pas.avis);
     }
 
     // F32: reconstrueix el que va escriure l'alumne, alineat amb l'original, a
@@ -727,6 +728,7 @@
       $('m-result-stats').textContent = `${c.correctWords ?? '—'} de ${c.totalWords ?? '—'} paraules · `
         + `${errors.length} error${errors.length !== 1 ? 's' : ''}`
         + (afegides ? ` · ${afegides} de més` : '');
+      window.Anim.pinta($('m-anim-block'), c);
 
       if (c.transcription) {
         $('m-transcription').style.display = '';

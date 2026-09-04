@@ -13,6 +13,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="Dictats">
+  <script src="/rang.js" defer></script>
+  <script src="/anim.js" defer></script>
   <script src="/report.js" defer></script>
   <script src="/pwa.js" defer></script>
 </head>
@@ -203,6 +205,7 @@
             <div class="scale-label" id="result-scale-label"></div>
             <div class="scale-sub" id="result-scale-sub"></div>
             <div id="result-stats" style="font-size:.875rem;color:var(--text-muted);margin-top:8px"></div>
+            <div id="anim-block" class="anim-block" style="display:none"></div>
             <div id="result-transcription" style="display:none;margin-top:12px;padding:12px;background:var(--bg);border-radius:8px;border:1px solid var(--border);font-size:.875rem;text-align:left"></div>
             <div id="rank-block" class="rank-block" style="display:none">
               <div class="rank-delta" id="rank-delta"></div>

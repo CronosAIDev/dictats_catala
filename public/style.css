@@ -688,6 +688,23 @@ body {
   transition: width .5s ease;
 }
 .rank-next { font-size: .8125rem; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+/* Quan el marge et protegeix però has caigut per sota del llindar (F50): no és
+   un error, és tensió, i es llegeix millor si no va del color del text apagat. */
+.rank-next-avis { color: var(--warning); font-weight: 500; }
+
+/* Ratxa, comparació amb un mateix i fites (#23). Van sota les xifres del
+   resultat, discretes: acompanyen, no criden. */
+.anim-block {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin-top: 10px;
+  font-size: .875rem;
+  font-variant-numeric: tabular-nums;
+}
+.anim-be { color: var(--success); font-weight: 500; }
+.anim-fita { color: var(--primary); font-weight: 600; }
+.anim-neutre { color: var(--text-muted); }
 
 /* L'escala sencera, al perfil */
 .rank-ladder { display: flex; flex-direction: column-reverse; gap: 2px; }

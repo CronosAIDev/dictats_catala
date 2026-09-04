@@ -7,6 +7,7 @@ const limitaCorreccions = require('../middleware/limitaCorreccions');
 const db = require('../lib/db');
 const { compara } = require('../lib/diff');
 const rang = require('../lib/rang');
+const motivacio = require('../lib/motivacio');
 const texts = require('../../data/texts');
 
 const router = express.Router();
@@ -214,6 +215,36 @@ async function afegeixExplicacions(correccio) {
 // Els punts i el rang no es desen: es recalculen recorrent l'historial. Val
 // una consulta més, i a canvi el dia que s'afini la fórmula tothom queda
 // recol·locat sol, sense migracions ni comptadors desincronitzats.
+// ── El que anima, amb dades que ja hi eren (#23) ─────────────
+// Tres coses barates: la ratxa de dies seguits, la comparació amb un mateix i
+// les fites de volum. Cap taula nova. La gamificació de debò (insígnies,
+// reptes) espera a que hi hagi gent a qui retenir, tal com diu la Issue.
+
+/** Total i mitjana d'errors ABANS del dictat que s'està corregint. */
+function historialAbans(email) {
+  const r = db.prepare(`
+    SELECT COUNT(*) AS total, AVG(errors_count) AS mitjana
+    FROM user_progress WHERE email = ?
+  `).get(email);
+  return { total: r.total || 0, mitjana: r.mitjana };
+}
+
+function ratxaDe(email) {
+  // Un any de dates n'hi ha de sobres: la ratxa es trenca al primer dia buit.
+  const dies = db.prepare(`
+    SELECT completed_at FROM user_progress
+    WHERE email = ? ORDER BY completed_at DESC LIMIT 400
+  `).all(email).map(r => r.completed_at);
+  return motivacio.ratxa(dies);
+}
+
+/** Penja de la correcció el que l'ha d'acompanyar a la pantalla de resultats. */
+function afegeixAnim(email, correccio, abans) {
+  correccio.ratxa = ratxaDe(email);
+  correccio.fita = motivacio.fita(abans.total + 1);
+  correccio.comparativa = motivacio.comparativa(correccio.errors.length, abans.mitjana, abans.total);
+}
+
 function estatDeRang(email) {
   const historial = db.prepare(`
     SELECT level, total_words AS totalWords, errors_count AS errors
@@ -258,8 +289,10 @@ router.post('/correct', requireAuth, limitaCorreccions, async (req, res) => {
 
   const correccio = corregeix(originalText, userText, volPuntuacio(punctuationDictated));
   await afegeixExplicacions(correccio);
+  const abans = historialAbans(req.session.profile.email);
   desa(req.session.profile.email, correccio, { level, textId, textTitle });
   correccio.rank = estatDeRang(req.session.profile.email);
+  afegeixAnim(req.session.profile.email, correccio, abans);
   res.json(correccio);
 });
 
@@ -320,8 +353,10 @@ router.post('/correct-image', requireAuth, limitaCorreccions, upload.single('pho
   const correccio = corregeix(originalText, transcripcio, volPuntuacio(punctuationDictated));
   correccio.transcription = transcripcio;
   await afegeixExplicacions(correccio);
+  const abans = historialAbans(req.session.profile.email);
   desa(req.session.profile.email, correccio, { level, textId, textTitle });
   correccio.rank = estatDeRang(req.session.profile.email);
+  afegeixAnim(req.session.profile.email, correccio, abans);
   res.json(correccio);
 });
 
@@ -352,6 +387,7 @@ router.get('/profile', requireAuth, (req, res) => {
       total: agregats.total,
       avgErrors: agregats.total ? Math.round(agregats.mitjana) : 0,
       bestErrors: agregats.best ?? null,
+      ratxa: ratxaDe(email),
     },
     rank: estatDeRang(email),
     ranks: rang.RANGS.map(r => ({ id: r.id, nom: r.nom, punts: r.punts, que: r.que })),
