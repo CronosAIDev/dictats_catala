@@ -14,6 +14,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="Dictats">
   <script src="/rang.js" defer></script>
+  <script src="/explicacions.js" defer></script>
   <script src="/anim.js" defer></script>
   <script src="/report.js" defer></script>
   <script src="/pwa.js" defer></script>
@@ -579,6 +580,8 @@
         esborraEsborrany();
         acabaCorreccio();
         renderResults(correccio);
+        // Les explicacions arriben després i tornen a pintar (F33).
+        if (window.Explicacions) window.Explicacions.demana(correccio, renderResults);
         showView('results');
       } catch (err) {
         acabaCorreccio();
@@ -602,6 +605,8 @@
         const correccio = await res.json();
         acabaCorreccio();
         renderResults(correccio);
+        // Les explicacions arriben després i tornen a pintar (F33).
+        if (window.Explicacions) window.Explicacions.demana(correccio, renderResults);
         showView('results');
       } catch (err) {
         acabaCorreccio();

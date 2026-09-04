@@ -165,8 +165,38 @@ function corregeix(originalText, userText, puntuacioDictada) {
   };
 }
 
-async function afegeixExplicacions(correccio) {
-  const llista = correccio.errors.concat(correccio.warnings);
+// ── Les explicacions, que arriben després (F33) ──────────────
+//
+// Abans això passava DINS de `/api/correct`: es corregia, s'esperava Claude i
+// llavors es responia. Però des de F31 la correcció sencera —marques, escala,
+// punts i rang— es calcula al servidor sense xarxa, o sigui que l'usuari
+// esperava uns quants segons amb un spinner mut per la ÚNICA part que encara
+// depèn del model: el text que explica cada falta.
+//
+// Ara la correcció surt de seguida i les explicacions vénen per una segona
+// petició. Les dues coses que ja hi havia i que ho fan segur:
+//
+//   · Quan l'API falla, `EXPLICACIONS_PER_DEFECTE` omple els buits. Ja era
+//     així, i per això la separació no afegeix cap camí de fallada nou: el
+//     pitjor cas de la segona petició és el mateix que el d'una API caiguda.
+//   · `generada` distingeix el que escriu el model del que escrivim nosaltres,
+//     que és el que necessita el botó de report (F64).
+
+/** Omple amb text nostre el que el model no hagi escrit. Mai un error mut. */
+function completaPerDefecte(llista, correccio) {
+  llista.forEach((e) => {
+    if (!e.explanation) e.explanation = EXPLICACIONS_PER_DEFECTE[e.type] || '';
+  });
+  if (!correccio.feedback) correccio.feedback = correccio.scale.sub;
+}
+
+/**
+ * Demana a Claude l'explicació de cada error i el missatge final, i les penja
+ * de la mateixa llista. Rep la llista i no la correcció sencera perquè ara se
+ * la crida des de dos llocs: la ruta d'explicacions, que la reconstrueix des
+ * de la BD, i les proves.
+ */
+async function demanaExplicacions(llista, correccio) {
   correccio.feedbackGenerat = false;
   if (!llista.length) {
     correccio.feedback = 'Cap error. Impecable!';
@@ -206,10 +236,7 @@ async function afegeixExplicacions(correccio) {
   // El que no hagi arribat —perquè l'API ha fallat, o perquè el model s'ha
   // deixat una entrada— es completa aquí. Val més una explicació genèrica que
   // un error mut.
-  llista.forEach((e) => {
-    if (!e.explanation) e.explanation = EXPLICACIONS_PER_DEFECTE[e.type] || '';
-  });
-  if (!correccio.feedback) correccio.feedback = correccio.scale.sub;
+  completaPerDefecte(llista, correccio);
 }
 
 // Els punts i el rang no es desen: es recalculen recorrent l'historial. Val
@@ -253,6 +280,9 @@ function estatDeRang(email) {
   return rang.estat(historial);
 }
 
+// Torna l'id del progrés desat, que és el que el client necessita per anar a
+// buscar les explicacions després (F33). `null` si la BD ha fallat: llavors no
+// hi ha res a demanar i el resultat es queda amb el text per defecte.
 function desa(email, correccio, { level, textId, textTitle }) {
   try {
     const resultat = db.prepare(`
@@ -269,15 +299,108 @@ function desa(email, correccio, { level, textId, textTitle }) {
       progressId, email, level || 'unknown', textId || 'unknown',
       e.type, e.original, e.userWrote, e.position, counted,
     ];
+    // L'ordre d'aquestes files ÉS l'ordre de `errors.concat(warnings)`, i
+    // `user_errors.id` és autoincremental: per això `ORDER BY id` el recupera
+    // exacte a `/api/explicacions/:id` i el client pot casar cada explicació
+    // amb el seu error per posició, sense enviar-los-hi de tornada.
     const desaTots = db.transaction((files) => { for (const f of files) insereix.run(...f); });
     desaTots([
       ...correccio.errors.map(e => fila(e, 1)),
       ...correccio.warnings.map(e => fila(e, 0)),
     ]);
+    return progressId;
   } catch (dbErr) {
     console.error('DB error:', dbErr.message);
+    return null;
   }
 }
+
+/**
+ * Respon la correcció sencera de seguida, sense esperar cap model (F33).
+ * Ho comparteixen les dues rutes: si visquessin una còpia a cada banda,
+ * arreglar-ne una i oblidar l'altra seria qüestió de temps.
+ */
+function respon(req, res, correccio, meta) {
+  const email = req.session.profile.email;
+  const llista = correccio.errors.concat(correccio.warnings);
+
+  const abans = historialAbans(email);
+  const progressId = desa(email, correccio, meta);
+  correccio.rank = estatDeRang(email);
+  afegeixAnim(email, correccio, abans);
+
+  correccio.feedbackGenerat = false;
+  if (!llista.length) {
+    correccio.feedback = 'Cap error. Impecable!';
+  } else {
+    completaPerDefecte(llista, correccio);
+    // Sense id no hi ha res a demanar: la BD ha fallat i el resultat es queda
+    // amb el text per defecte, que ja és el pitjor cas d'avui.
+    if (progressId) correccio.progressId = progressId;
+  }
+  res.json(correccio);
+}
+
+/**
+ * Les explicacions d'una correcció ja feta. Es demanen a part perquè són
+ * l'única part que necessita el model (F33).
+ *
+ * És **idempotent i gratis a partir de la segona vegada**: es desen a
+ * `user_errors.explanation` i, si ja hi són, no es torna a cridar l'API. Això
+ * també tanca la porta a fer-ho servir per gastar diners en bucle, que és el
+ * que hauria obligat a comptar-ho al límit de F14.
+ */
+router.post('/explicacions/:id', requireAuth, async (req, res) => {
+  const email = req.session.profile.email;
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id) || id <= 0) return res.status(400).json({ error: 'Id no vàlid' });
+
+  // Amb l'email al WHERE: ningú pot demanar les explicacions d'un altre.
+  const progres = db.prepare(
+    'SELECT id, feedback, feedback_generat FROM user_progress WHERE id = ? AND email = ?'
+  ).get(id, email);
+  if (!progres) return res.status(404).json({ error: 'Correcció no trobada' });
+
+  const files = db.prepare(`
+    SELECT id, type, original, user_wrote AS userWrote, explanation, generada
+    FROM user_errors WHERE progress_id = ? ORDER BY id ASC
+  `).all(id);
+
+  const respostaDesada = () => res.json({
+    explicacions: files.map(f => ({
+      explanation: f.explanation || EXPLICACIONS_PER_DEFECTE[f.type] || '',
+      generada: !!f.generada,
+    })),
+    feedback: progres.feedback,
+    feedbackGenerat: !!progres.feedback_generat,
+  });
+
+  // `feedback` desat vol dir que això ja s'ha resolt una vegada — hagi escrit
+  // el model o hagi fallat l'API. No es reintenta: si avui falla, avui es
+  // queda amb el text nostre, exactament com passava abans de separar-ho.
+  if (progres.feedback !== null || !files.length) return respostaDesada();
+
+  const correccio = { scale: getScale(files.filter(f => f.type !== 'puntuació').length), feedback: '' };
+  const llista = files.map(f => ({ type: f.type, original: f.original, userWrote: f.userWrote }));
+  await demanaExplicacions(llista, correccio);
+
+  try {
+    const posa = db.prepare('UPDATE user_errors SET explanation = ?, generada = ? WHERE id = ?');
+    db.transaction(() => {
+      llista.forEach((e, i) => posa.run(e.explanation, e.generada ? 1 : 0, files[i].id));
+      db.prepare('UPDATE user_progress SET feedback = ?, feedback_generat = ? WHERE id = ?')
+        .run(correccio.feedback, correccio.feedbackGenerat ? 1 : 0, id);
+    })();
+  } catch (dbErr) {
+    console.error('DB error desant explicacions:', dbErr.message);   // es responen igual
+  }
+
+  res.json({
+    explicacions: llista.map(e => ({ explanation: e.explanation, generada: !!e.generada })),
+    feedback: correccio.feedback,
+    feedbackGenerat: !!correccio.feedbackGenerat,
+  });
+});
 
 router.post('/correct', requireAuth, limitaCorreccions, async (req, res) => {
   const { originalText, userText, level, textId, textTitle, punctuationDictated } = req.body;
@@ -288,12 +411,9 @@ router.post('/correct', requireAuth, limitaCorreccions, async (req, res) => {
   }
 
   const correccio = corregeix(originalText, userText, volPuntuacio(punctuationDictated));
-  await afegeixExplicacions(correccio);
-  const abans = historialAbans(req.session.profile.email);
-  desa(req.session.profile.email, correccio, { level, textId, textTitle });
-  correccio.rank = estatDeRang(req.session.profile.email);
-  afegeixAnim(req.session.profile.email, correccio, abans);
-  res.json(correccio);
+  // Res de crides a l'API aquí: tot això ja està calculat i pot sortir ara
+  // mateix (F33). Les explicacions les demana el client a `/api/explicacions`.
+  respon(req, res, correccio, { level, textId, textTitle });
 });
 
 // ── Correcció per foto ───────────────────────────────────────
@@ -352,12 +472,7 @@ router.post('/correct-image', requireAuth, limitaCorreccions, upload.single('pho
 
   const correccio = corregeix(originalText, transcripcio, volPuntuacio(punctuationDictated));
   correccio.transcription = transcripcio;
-  await afegeixExplicacions(correccio);
-  const abans = historialAbans(req.session.profile.email);
-  desa(req.session.profile.email, correccio, { level, textId, textTitle });
-  correccio.rank = estatDeRang(req.session.profile.email);
-  afegeixAnim(req.session.profile.email, correccio, abans);
-  res.json(correccio);
+  respon(req, res, correccio, { level, textId, textTitle });
 });
 
 // ── Perfil / historial ───────────────────────────────────────
