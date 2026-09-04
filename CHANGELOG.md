@@ -1,5 +1,81 @@
 # Changelog — dictats_catala
 
+## [1.3.0] — 2026-09-04 — v10…v14: la app se despliega, deja de mentir y anima
+
+Cinco ramas de trabajo entre el 31-08 y el 04-09. Lo que las une: la app pasó de estar
+escrita a estar **en producción y verificada ejecutando**, y varias cosas que decían algo
+distinto de lo que hacían dejaron de hacerlo.
+
+### Añadido
+- **Política de privacidad servida por la propia app** (`/privacitat`, F63), sin sesión —
+  quien aún no tiene cuenta también tiene que poder leerla, y Google Play exige una URL
+  pública. Con `docs/sections/publicacio/DATA_SAFETY.md`, el formulario de Data Safety
+  respondido **auditando el código, con fichero y línea al lado de cada respuesta**.
+- **Aviso sobre el contenido que escribe la IA** (F64): botón ⚑ sobre cada explicación y
+  `POST /api/report`. Es requisito de Play poder reportar contenido generado con IA desde
+  dentro de la app. El botón solo sale sobre texto que ha escrito el modelo: cuando la API
+  falla las explicaciones son de plantilla y no hay nada que reportar.
+- **`/.well-known/assetlinks.json` servido de verdad** (F53) y `scripts/assetlinks.js`,
+  que **se niega a escribir el fichero con una sola huella SHA-256**: son dos y olvidar la
+  segunda hace que el TWA se abra con la barra de Chrome encima sin dar ningún error.
+- **Racha, comparación con uno mismo e hitos de volumen** (`src/lib/motivacio.js`, F34
+  parcial). Todo sale de datos que la app ya guardaba: ni una tabla nueva, ni una pantalla
+  nueva. **La racha no se rompe a medianoche** sino cuando pasa un día entero sin dictados
+  — romperla por no haber llegado todavía sería reñir, y `CLAUDE.md` dice que no se riñe.
+  La comparación es siempre **con uno mismo**: la tabla de cuentas se comparte con los
+  clientes de FeedScale y enseñar resultados de unos a otros sería un problema de
+  privacidad, no una funcionalidad.
+- **Banco de pruebas del corrector** (`scripts/benchmark/`, F55): errores inyectados por
+  clase sobre los 30 textos, con el ground truth gratis porque el texto correcto ya lo
+  tenemos. **100 % de recall en las ocho clases.** No necesita clave de API ni gasta nada.
+- **Arnés del benchmark de foto** (`scripts/benchmark/visio.js`, v14): tres modelos con la
+  misma prueba, coste real del campo `usage`, latencia p50/p95 y la conclusión por **el más
+  barato que transcribe bien**, que es la pregunta de la #22 y no «cuál es mejor». El
+  prompt se extrae de `src/routes/dictats.js` en vez de copiarse, para que nadie acabe
+  comparando prompts creyendo que compara modelos.
+- **Dos textos que cargan las clases que discriminan** (F58): ela geminada y dièresi
+  apenas aparecían en el banco y son de las que más separan a un modelo de otro.
+- **Screen Wake Lock durante el dictado** (F44): la pantalla se apagaba mientras se
+  escuchaba.
+- **Tope a las llamadas que cuestan dinero** (F14) y **el texto propio al lado del
+  correcto** en el resultado (F32).
+- **Ficha de Play, nombre público y ASO** (`FITXA_PLAY.md`, F61), con el dato que lo
+  cambia todo: desde el curso 2025-26 el C2 es requisito para entrar en la bolsa docente
+  y **solo lo tiene el 25 % del profesorado**. Unas 70.000 personas en Cataluña.
+
+### Corregido
+- **La política de privacidad describía un sistema que no existe.** Se redactó auditando
+  la Fase 0 (bcrypt, identificador de Google, dos rutas de borrado de cuenta) y **ninguna
+  de las tres cosas pasa en producción**: `src/lib/auth.js` comprueba la cuenta contra el
+  sistema compartido y no guarda ninguna contraseña. Publicarla habría sido declarar un
+  sistema inexistente — el motivo de retirada que el propio gameplan advierte. Reescrita
+  para que diga lo que el código hace.
+- **La barra de rango se leía como rota** (F50). Con el margen anti-yoyó protegiéndote, los
+  puntos pueden caer por debajo del umbral de tu rango: el progreso salía negativo y la
+  barra a 0 %. Ahora se limita, y la situación **se dice con palabras** — «estás 27 puntos
+  por debajo de Manilles; si pierdes 13 más, bajas a Folre» — que aprieta más que una barra
+  muda.
+- **Dos apóstrofos seguidos desmontaban la corrección** (F57): `L'oli d'oliva` escrito
+  `El oli de oliva` reportaba dos errores de más y desplazaba el texto que se enseña.
+  `ajuntaApostrofs()` rehecho por tandas en vez de por parejas.
+- **El «Historial» no era cronológico** (F37), **«Sortir» no hacía nada en una cuenta
+  nueva** (F49) y **el móvil bloqueaba el zoom** (F38).
+- **La lectura de la barra de rango estaba escrita tres veces** (`app.js`, `mobile.html`,
+  `profile.html`) — la misma forma en que F17 llegó a ser un bug duplicado. Ahora vive una
+  sola vez en `public/rang.js`.
+
+### Mejorado
+- **116 comprobaciones** en la suite (`npm test`), sin dependencias.
+- Requisitos de Play que estaban **acabados desde el 31-08 y nunca habían llegado a
+  producción**: vivían en `v10` junto a una Fase 0 que esperaba una decisión, y una rama
+  que espera una decisión se convierte en una nevera de trabajo terminado. Rescatados en
+  `v12` y desplegados. **Lo que no depende de esa decisión va a `main` por su cuenta.**
+- La Fase 0 (identidad propia con bcrypt y cliente OAuth propio) queda **fuera de esta
+  versión a propósito**: se rehace con Firebase Auth, que da recuperación de contraseña,
+  verificación de correo y protección contra fuerza bruta sin escribirlos a mano, y es
+  gratis sin límite de usuarios activos (#16, #32).
+
+
 ## [1.2.0] — 2026-08-28 — v6: el dictado deja de estorbar y la corrección deja de depender de la API
 
 ### Añadido
