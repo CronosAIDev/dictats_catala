@@ -6,7 +6,7 @@
   "scripts": {
     "start": "node src/index.js",
     "dev": "node --watch src/index.js",
-    "test": "node test/diff.test.js && node test/rang.test.js && node test/limits.test.js && node test/dictat.test.js",
+    "test": "node test/diff.test.js && node test/rang.test.js && node test/limits.test.js && node test/motivacio.test.js && node test/dictat.test.js",
     "benchmark": "node scripts/benchmark/puntua.js"
   },
   "repository": {

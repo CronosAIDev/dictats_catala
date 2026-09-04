@@ -96,6 +96,28 @@ console.log('\nEl que necessita la pantalla:');
   comprova('i el rang és Enxaneta', 'Enxaneta', e.rang.nom);
 }
 
+console.log('\nQuan el marge et protegeix, la barra no pot sortir buida (F50):');
+{
+  // Pujar a Folre (200) i després caure per sota sense arribar a perdre el rang.
+  const historial = repeteix(6, { level: 'basic', totalWords: 34, errors: 0 });   // 204
+  historial.push({ level: 'basic', totalWords: 34, errors: 15 });                 // 184
+  const e = R.estat(historial);
+
+  comprova('el rang es manté', 'Folre', e.rang.nom);
+  comprova('el progrés dins del tram no és negatiu', true, e.seguent.progres >= 0);
+  comprova('diu quants punts et falten per tornar al llindar', 200 - 184, e.sotaLlindar.perSota);
+  comprova('i quants en pots perdre abans de baixar', 184 - (200 - R.MARGE_DE_BAIXADA), e.sotaLlindar.perPerdre);
+  comprova('i cap a quin rang cauries', 'Pinya', e.sotaLlindar.anterior);
+}
+{
+  const e = R.estat(repeteix(4, { level: 'basic', totalWords: 34, errors: 0 }));  // 136
+  comprova('per sobre del llindar no hi ha avís', null, e.sotaLlindar);
+}
+{
+  const e = R.estat([]);
+  comprova('sense historial tampoc', null, e.sotaLlindar);
+}
+
 console.log('\nEls dictats antics, sense nombre de paraules desat:');
 comprova('s\'estimen pel nivell en comptes de valdre zero', true,
   R.puntsDelDictat({ level: 'intermedi', errors: 0 }) > 0);

@@ -13,6 +13,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="Dictats">
+  <script src="/rang.js" defer></script>
   <script src="/pwa.js" defer></script>
 </head>
 <body>
@@ -106,14 +107,10 @@
       document.getElementById('rank-step').textContent = `${rank.rang.nivell} de ${rank.rang.de}`;
       document.getElementById('rank-what').textContent = rank.rang.que;
       document.getElementById('rank-points').textContent = `${rank.punts} punts`;
-      if (rank.seguent) {
-        document.getElementById('rank-bar').style.width = Math.max(0, Math.min(100, rank.seguent.progres)) + '%';
-        document.getElementById('rank-next').textContent =
-          `Et falten ${rank.seguent.falten} punts per a ${rank.seguent.nom}.`;
-      } else {
-        document.getElementById('rank-bar').style.width = '100%';
-        document.getElementById('rank-next').textContent = 'Has coronat el castell. No hi ha res més amunt.';
-      }
+      const pas = window.Rang.seguentPas(rank);
+      document.getElementById('rank-bar').style.width = pas.amplada + '%';
+      document.getElementById('rank-next').textContent = pas.text;
+      document.getElementById('rank-next').classList.toggle('rank-next-avis', pas.avis);
 
       // L'escala sencera, de baix a dalt com un castell de debò.
       document.getElementById('rank-ladder').innerHTML = data.ranks.map(r => {
@@ -127,7 +124,14 @@
           </div>`;
       }).join('');
 
-      // Stats
+      // Stats. La ratxa no renya: si avui encara no n'has fet cap però ve d'ahir,
+      // ho diu com una invitació, no com un avís de pèrdua.
+      const ratxaText = r => {
+        if (!r || r.dies === 0) return 'Dies seguits';
+        if (r.enPerill) return r.dies === 1 ? 'Dia seguit · fes-ne un avui' : 'Dies seguits · fes-ne un avui';
+        return r.dies === 1 ? 'Dia seguit' : 'Dies seguits';
+      };
+
       const scaleForAvg = errCount => {
         if (errCount === 0) return 'Excel·lent';
         if (errCount <= 2) return 'Molt bé';
@@ -152,6 +156,10 @@
         <div class="stat-card">
           <div class="stat-number" style="font-size:1.25rem">${scaleForAvg(data.stats.avgErrors)}</div>
           <div class="stat-label">Nivell general</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-number">${data.stats.ratxa.dies}</div>
+          <div class="stat-label">${ratxaText(data.stats.ratxa)}</div>
         </div>
       `;
 

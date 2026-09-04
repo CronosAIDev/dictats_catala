@@ -124,16 +124,32 @@ function estat(dictats) {
   const rang = ultima ? ultima.rang : RANGS[0];
   const seguent = RANGS[indexDe(rang) + 1] || null;
 
+  // Quant s'ha avançat dins del tram actual. Pot ser NEGATIU: el marge de la
+  // nota 3 manté el rang encara que els punts hagin caigut per sota del seu
+  // llindar, i llavors la barra sortia buida i es llegia com si estigués
+  // trencada (F50). Es limita aquí, i la situació es diu amb paraules a
+  // `sotaLlindar` en comptes d'amagar-la.
+  const dins = punts - rang.punts;
+  const tram = seguent ? seguent.punts - rang.punts : 0;
+
   return {
     punts,
     rang: { id: rang.id, nom: rang.nom, que: rang.que, nivell: indexDe(rang) + 1, de: RANGS.length },
+    // Només quan el marge t'està protegint. Diu què passa i què costa
+    // arreglar-ho, que aprieta més que una barra muda.
+    sotaLlindar: dins < 0
+      ? {
+        perSota: -dins,                                   // per tornar al llindar
+        perPerdre: punts - (rang.punts - MARGE_DE_BAIXADA), // el que queda de marge
+        anterior: RANGS[indexDe(rang) - 1] ? RANGS[indexDe(rang) - 1].nom : null,
+      }
+      : null,
     seguent: seguent
       ? {
         nom: seguent.nom,
         punts: seguent.punts,
         falten: Math.max(0, seguent.punts - punts),
-        // Quant s'ha avançat dins del tram actual, per a la barra de progrés.
-        progres: Math.round(((punts - rang.punts) / (seguent.punts - rang.punts)) * 100),
+        progres: Math.max(0, Math.min(100, Math.round((dins / tram) * 100))),
       }
       : null,
     // L'últim dictat: què ha donat i si ha mogut el rang.
