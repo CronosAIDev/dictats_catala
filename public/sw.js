@@ -16,13 +16,14 @@
 // que sigui instal·lable i per estalviar descàrregues d'estàtics, no per oferir
 // un mode fora de línia que no podria complir.
 
-const CACHE = 'dictats-estatics-v2';
+const CACHE = 'dictats-estatics-v4';
 
 const ESTATICS = [
   '/style.css',
   '/app.js',
   '/dictat.js',
   '/pwa.js',
+  '/report.js',
   '/icons/icon-192.png',
   '/icons/icon-512.png',
   '/icons/icon-maskable-512.png',

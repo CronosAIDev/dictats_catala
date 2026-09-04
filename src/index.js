@@ -29,6 +29,23 @@ app.use(helmet({
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
+// El `.well-known` va amb el seu propi muntatge, i no per la regla general.
+//
+// Express ignora per defecte tot el que comença per punt (`dotfiles: 'ignore'`),
+// així que `/.well-known/assetlinks.json` donava **404** encara que el fitxer hi
+// fos. No té res a veure amb `requireAuth`, que ni hi arriba: `express.static`
+// va abans de la sessió. Comprovat executant-ho (F53).
+//
+// Importa perquè és un fallo silenciós dels cars: sense aquest fitxer, el TWA
+// s'instal·la i s'obre igualment, però **amb la barra de Chrome a sobre i sense
+// donar cap error**.
+//
+// Es munta a part en comptes de posar `dotfiles: 'allow'` a tot `public/`:
+// aquella opció obriria qualsevol fitxer ocult que hi caigués mai. Aquí, un cop
+// tret el prefix del muntatge, el que queda és `/assetlinks.json`, que no és cap
+// dotfile i se serveix sol.
+app.use('/.well-known', express.static(path.join(__dirname, '../public/.well-known')));
+
 app.use(express.static(path.join(__dirname, '../public')));
 
 app.use(session({
@@ -45,6 +62,13 @@ app.use((req, res, next) => {
 
 app.use('/api', authRoutes);
 app.use('/api', dictatsRoutes);
+
+// La política de privacitat va servida per la mateixa app i **sense sessió**: Play
+// l'exigeix en una URL i qui encara no té compte l'ha de poder llegir abans de
+// fer-se'n un. És també la URL que va al formulari de Data Safety.
+app.get('/privacitat', (req, res) => {
+  res.sendFile(path.join(__dirname, '../public/privacitat.html'));
+});
 
 app.get('/login', (req, res) => {
   if (req.session?.profile) return res.redirect('/');

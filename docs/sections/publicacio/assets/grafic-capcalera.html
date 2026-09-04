@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<!-- F62 — Gráfico de cabecera de Google Play, 1024×500.
+     Se captura con: node docs/sections/publicacio/assets/captura.js
+     Diseño: la identidad de la app (theme_color #2563eb del manifest, icono real),
+     el nombre visible propuesto en FITXA_PLAY.md y la promesa decidida en la #23
+     (ortografía y acentuación, nada más). Texto grande y poco: en la ficha se ve
+     reducido y Play recomienda no meter letra pequeña. -->
+<html lang="ca">
+<head>
+<meta charset="UTF-8">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    width: 1024px; height: 500px; overflow: hidden;
+    font-family: -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+    background: linear-gradient(135deg, #1d4ed8 0%, #2563eb 55%, #3b82f6 100%);
+    display: flex; align-items: center; justify-content: center;
+    position: relative; color: #fff;
+  }
+  /* Marca de agua tipográfica: letras problemáticas del catalán, muy sutiles */
+  .fons {
+    position: absolute; inset: 0; overflow: hidden; opacity: .08;
+    font-weight: 800; color: #fff; user-select: none;
+  }
+  .fons span { position: absolute; }
+  .contingut {
+    display: flex; align-items: center; gap: 56px; z-index: 1;
+    padding: 0 80px;
+  }
+  .icona {
+    width: 190px; height: 190px; border-radius: 44px;
+    box-shadow: 0 20px 60px rgba(0,0,0,.35);
+    background: #fff;
+  }
+  .titol { font-size: 68px; font-weight: 800; letter-spacing: -1px; line-height: 1.05; }
+  .subtitol {
+    margin-top: 18px; font-size: 30px; font-weight: 500; line-height: 1.3;
+    color: rgba(255,255,255,.92); max-width: 560px;
+  }
+  .accent { color: #fde047; }
+</style>
+</head>
+<body>
+  <div class="fons">
+    <span style="top:-30px; left:40px;  font-size:150px; transform:rotate(-8deg)">l·l</span>
+    <span style="top:300px; left:150px; font-size:120px; transform:rotate(6deg)">ç</span>
+    <span style="top:40px;  right:60px; font-size:130px; transform:rotate(10deg)">à</span>
+    <span style="top:320px; right:180px;font-size:110px; transform:rotate(-6deg)">ï</span>
+    <span style="top:170px; left:-20px; font-size:100px; transform:rotate(4deg)">é</span>
+    <span style="top:-20px; left:430px; font-size:110px; transform:rotate(5deg)">’</span>
+  </div>
+  <div class="contingut">
+    <img class="icona" src="../../../../public/icons/icon-512.png" alt="">
+    <div>
+      <div class="titol">Dictats en Català</div>
+      <div class="subtitol">Dictats amb correcció automàtica: <span class="accent">ortografia i accentuació</span>, error per error.</div>
+    </div>
+  </div>
+</body>
+</html>

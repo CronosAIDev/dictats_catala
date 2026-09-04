@@ -517,7 +517,15 @@ function fitxaError(err) {
           <span class="arrow">→</span>
           <span class="right">${escapeHtml(err.original || '(sobra)')}</span>
         </div>
-        <div class="error-explanation">${escapeHtml(err.explanation || '')}</div>
+        <div class="error-explanation">
+          <span>${escapeHtml(err.explanation || '')}</span>
+          ${window.Avisos ? window.Avisos.boto({
+            generada: err.generada,
+            kind: 'explicacio',
+            content: err.explanation,
+            context: `${err.type || ''}: ${err.original || ''} -> ${err.userWrote || ''}`,
+          }) : ''}
+        </div>
       </div>
     </div>`;
 }
@@ -644,7 +652,14 @@ function renderResults(correction) {
   $('warnings-section').style.display = warnings.length ? '' : 'none';
   if (warnings.length) $('warnings-list-items').innerHTML = warnings.map(fitxaError).join('');
 
-  $('feedback-box').textContent = correction.feedback || '';
+  // El missatge final també l'escriu el model quan l'API respon, així que
+  // també ha de tenir la seva via d'avís (F64).
+  $('feedback-box').innerHTML = escapeHtml(correction.feedback || '')
+    + (window.Avisos ? window.Avisos.boto({
+        generada: correction.feedbackGenerat,
+        kind: 'feedback',
+        content: correction.feedback,
+      }) : '');
   pintaRang(correction.rank);
 }
 

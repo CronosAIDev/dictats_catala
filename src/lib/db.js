@@ -44,6 +44,27 @@ db.exec(`
   -- només són un avís: si la puntuació no s'ha dictat, no es pot penalitzar el
   -- que no s'ha pogut sentir, però sí que val la pena guardar-ho per veure el
   -- patró.
+  -- Avisos sobre el contingut que escriu el model (F64).
+  --
+  -- Google Play tracta les apps que generen contingut amb IA com una àrea
+  -- regulada, i exigeix poder denunciar contingut ofensiu SENSE sortir de
+  -- l'app. A Dictats el model escriu l'explicació de cada error i el missatge
+  -- final, i tots dos es mostren a qui practica.
+  --
+  -- Es desa el text tal com el va veure la persona: si es reescriu el prompt o
+  -- es canvia de model, l'avís ha de seguir dient què es va denunciar.
+  CREATE TABLE IF NOT EXISTS content_reports (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    email TEXT NOT NULL,
+    kind TEXT NOT NULL,          -- 'explicacio' | 'feedback'
+    content TEXT NOT NULL,       -- el text denunciat, literal
+    context TEXT,                -- la paraula i el tipus d'error, si n'hi ha
+    reason TEXT,                 -- el que hi hagi volgut escriure la persona
+    model TEXT,
+    created_at TEXT DEFAULT (datetime('now')),
+    reviewed INTEGER NOT NULL DEFAULT 0
+  );
+
   CREATE TABLE IF NOT EXISTS user_errors (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     progress_id INTEGER NOT NULL,
@@ -61,6 +82,8 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_user_errors_email ON user_errors (email, created_at);
   CREATE INDEX IF NOT EXISTS idx_user_errors_type  ON user_errors (email, type);
   CREATE INDEX IF NOT EXISTS idx_user_progress_email ON user_progress (email, completed_at);
+  -- Els avisos es miren pendents primer: és l'única consulta que en farà ningú.
+  CREATE INDEX IF NOT EXISTS idx_reports_pendents ON content_reports (reviewed, created_at);
 `);
 
 // Migració: el nombre de paraules del dictat. Fa falta per als punts (F45),
