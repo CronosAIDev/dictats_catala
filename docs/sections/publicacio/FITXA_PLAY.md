@@ -206,12 +206,41 @@ buida. Cinc, en aquest ordre:
 | 4 | El dictat corrent, amb el compte enrere i els controls | Que es vegi que l'app t'espera a tu |
 | 5 | El perfil amb el progrés | Retenció |
 
-⚠️ **Cap d'aquestes captures es pot fer encara**, perquè producció no té el codi de v6 i
-la crida a Claude no s'ha executat amb èxit des del març (#21). La captura 2 a més
-necessita **un dictat escrit a mà de veritat, fotografiat**.
+### ✅ Fetes (04-09), menys la de la foto
+
+Estan a `assets/captures/`, a **1080 × 1920**, que és la mida de telèfon que demana Play:
+
+| Fitxer | Què s'hi veu |
+|---|---|
+| `03-correccio.png` | **La correcció**: «Molt bé! · Quasi perfecte · 40 de 42 paraules · 2 errors», les paraules marcades, el rang i els punts guanyats |
+| `04-errors-classificats.png` | El teu text al costat del correcte, amb el tipus de cada error |
+| `05-perfil.png` | El perfil amb el rang i l'escala sencera dels vuit |
+| `02-dictat.png` | El dictat amb els controls, la velocitat i «Paper i foto» |
+| `01-nivells.png` | Els quatre nivells i el banc de textos |
+
+**Com s'han fet**, perquè es puguin refer: `scripts/captures-play.js` amb Chrome, contra
+un servidor local i una **BD temporal**, amb l'historial sembrat fent correccions **reals
+per l'API** (`scripts/sembra-captures.js`) — cap fila inserida a mà, cap data tocada. El
+que s'hi veu ho ha calculat l'app.
+
+Dues coses dites clares:
+
+- **No hi ha clau d'API a la màquina, i no ha calgut.** Des de F31 la comparació és
+  determinista al servidor, així que els errors, les marques, l'escala i el rang surten
+  igual. L'únic que hi falta són les explicacions redactades per Claude, que a les captures
+  no es veuen.
+- A `02-dictat.png` s'ha **amagat l'avís de «no hi ha veu de síntesi»**: és cert a un Chrome
+  sense veus instal·lades i fals a qualsevol Android que tingui la veu catalana, que és el
+  cas normal. No s'ha tocat res més.
+
+### ⏳ La que falta
+
+La **captura 2, el dictat a mà corregit per foto**, necessita un manuscrit fotografiat —
+les mateixes fotos que fan falta per al benchmark de la #22. Una feina, dues issues.
 
 També calen: **icona de 512×512** (ja existeix, `public/icons/icon-512.png`) i **gràfic de
-capçalera de 1024×500**, que no existeix.
+capçalera de 1024×500**, que **també existeix** des del rescat de `v12`:
+`assets/grafic-capcalera-1024x500.png`.
 
 ---
 
@@ -223,8 +252,8 @@ capçalera de 1024×500**, que no existeix.
 | Si la fitxa esmenta el C2 i com | Óscar |
 | Si els rangs entren al llançament (#23) | Óscar |
 | Validar les paraules clau amb dades reals | Play Console, un cop publicada |
-| Fer les captures | Depèn del desplegament (#15) i de la clau d'API |
-| Gràfic de capçalera 1024×500 | Per fer |
+| ~~Fer les captures~~ | **Fetes el 04-09**, menys la de la foto (necessita el manuscrit de la #22) |
+| ~~Gràfic de capçalera 1024×500~~ | **Fet**, `assets/grafic-capcalera-1024x500.png` |
 
 ## Fonts
 

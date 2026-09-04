@@ -35,7 +35,7 @@
 
 | ID | Feature | Descripción | Estado | Asignado a |
 |----|---------|-------------|--------|------------|
-| F51 | Dictats en Google Play | [Gameplan](../sections/publicacio/GP_dictats_a_google_play.md) — PWA → TWA → ficha de Play. Fase 1 (PWA) ya hecha: es F10, de v5. Fase 0 decidida el 30-08 (identidad propia, calcando `aicamper_app`), así que ya no bloquea. Pendientes: Fase 0 como trabajo, Fases 2, 3, 4 y las dos revisiones (F54, F55) | En curso | gerard |
+| F51 | Dictats en Google Play | [Gameplan](../sections/publicacio/GP_dictats_a_google_play.md) — PWA → TWA → ficha de Play. Fase 1 (PWA) ya hecha: es F10, de v5. Fase 0 decidida el 30-08 (identidad propia, calcando `aicamper_app`), así que ya no bloquea. Fase 3 y 4: politica desplegada, ficha escrita y **capturas hechas (v15)**. Fase 2: **JDK y keystore de subida hechos (v15)**, huella SHA-256 sacada; falta el AAB, que espera el `applicationId`. Pendientes: Fase 0 (se rehace con Firebase), cerrar Fase 2, y F55 | En curso | gerard |
 
 ## Pendiente
 
