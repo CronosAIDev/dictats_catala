@@ -477,6 +477,9 @@ async function submitCorrection() {
     $('correction-loading').style.display = 'none';
     renderResults(correction);
     showView('results');
+    // La correcció ja es veu. Les explicacions arriben després i es torna a
+    // pintar amb el mateix objecte, que ja les porta (F33).
+    if (window.Explicacions) window.Explicacions.demana(correction, renderResults);
   } catch (err) {
     $('correction-loading').style.display = 'none';
     $('btn-correct').disabled = false;

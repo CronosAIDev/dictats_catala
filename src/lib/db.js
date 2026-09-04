@@ -101,4 +101,20 @@ function afegeixColumnaSiFalta(taula, columna, definicio) {
 
 afegeixColumnaSiFalta('user_progress', 'total_words', 'INTEGER');
 
+// Migració: on es desa el que escriu el model (F33).
+//
+// Fins ara les explicacions es demanaven a Claude DINS de la petició de
+// correcció i es llençaven en tancar la pantalla. Això costava dues coses:
+// l'usuari esperava uns segons amb un spinner mut per a una part del resultat
+// que ja estava calculada, i el mateix error tornava a costar diners cada
+// vegada que es volia tornar a veure.
+//
+// Desant-les, la segona crida a `/api/explicacions/:id` no torna a demanar res
+// a l'API: és idempotent i gratis. També és el primer graó de F30, que vol un
+// catàleg de fitxes de regla en comptes de text redactat de nou cada cop.
+afegeixColumnaSiFalta('user_errors', 'explanation', 'TEXT');
+afegeixColumnaSiFalta('user_errors', 'generada', 'INTEGER NOT NULL DEFAULT 0');
+afegeixColumnaSiFalta('user_progress', 'feedback', 'TEXT');
+afegeixColumnaSiFalta('user_progress', 'feedback_generat', 'INTEGER NOT NULL DEFAULT 0');
+
 module.exports = db;
