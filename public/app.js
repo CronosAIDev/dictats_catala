@@ -202,6 +202,10 @@ function setMode(mode) {
   state.photoFile = null;
   $('mode-editor').classList.toggle('active', mode === 'editor');
   $('mode-paper').classList.toggle('active', mode === 'paper');
+  if (window.A11y) {
+    window.A11y.premut($('mode-editor'), mode === 'editor');
+    window.A11y.premut($('mode-paper'), mode === 'paper');
+  }
   $('editor-zone').style.display = mode === 'editor' ? '' : 'none';
   $('paper-zone').style.display = mode === 'paper' ? '' : 'none';
   $('photo-preview-wrap').style.display = 'none';
@@ -366,7 +370,8 @@ function iniciaDictat() {
 }
 
 function pintaEstat(info) {
-  $('progress-bar').style.width = info.progres + '%';
+  if (window.A11y) window.A11y.progres($('progress-bar'), info.progres);
+  else $('progress-bar').style.width = info.progres + '%';
   state.dictationDone = info.estat === 'fet';
 
   // Pantalla encesa mentre el dictat corre (llegint o pausa d'escriptura)
@@ -401,7 +406,8 @@ function resetDictationUI() {
   pantalla.deixa();
   state.dictationDone = false;
   state.photoFile = null;
-  $('progress-bar').style.width = '0%';
+  if (window.A11y) window.A11y.progres($('progress-bar'), 0);
+  else $('progress-bar').style.width = '0%';
   $('phrase-indicator').textContent = '';
   $('status-badge').innerHTML = '';
   $('btn-start-dictation').style.display = '';
@@ -477,9 +483,20 @@ async function submitCorrection() {
     $('correction-loading').style.display = 'none';
     renderResults(correction);
     showView('results');
+    if (window.A11y) {
+      window.A11y.focusA($('result-scale-label'));
+      window.A11y.anuncia(`${correction.scale.label} ${correction.correctWords} de ${correction.totalWords} paraules, `
+        + `${correction.errors.length} ${correction.errors.length === 1 ? 'error' : 'errors'}.`);
+    }
     // La correcció ja es veu. Les explicacions arriben després i es torna a
-    // pintar amb el mateix objecte, que ja les porta (F33).
-    if (window.Explicacions) window.Explicacions.demana(correction, renderResults);
+    // pintar amb el mateix objecte, que ja les porta (F33). El repintat
+    // destrueix l'element que té el focus, així que es torna a posar.
+    if (window.Explicacions) {
+      window.Explicacions.demana(correction, (c) => {
+        if (window.A11y) window.A11y.preservantFocus(() => renderResults(c));
+        else renderResults(c);
+      });
+    }
   } catch (err) {
     $('correction-loading').style.display = 'none';
     $('btn-correct').disabled = false;
@@ -565,7 +582,8 @@ function pintaRang(rank) {
   $('rank-points').textContent = `${rank.punts} punts`;
 
   const pas = window.Rang.seguentPas(rank);
-  $('rank-bar').style.width = pas.amplada + '%';
+  if (window.A11y) window.A11y.progres($('rank-bar'), pas.amplada);
+  else $('rank-bar').style.width = pas.amplada + '%';
   $('rank-next').textContent = pas.text;
   $('rank-next').classList.toggle('rank-next-avis', pas.avis);
 }
