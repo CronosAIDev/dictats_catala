@@ -101,10 +101,71 @@ Paraules tocables als 30 textos: `accent-general` 140, `diacritic` 56, `apostrof
 el banc ha de servir per comparar models al camí de la foto, convindria un text escrit a
 posta que les carregui.
 
+## El camí de la foto: `visio.js`
+
+```bash
+node scripts/benchmark/visio.js --assaig          # veure què faria, sense gastar
+node scripts/benchmark/visio.js                   # 3 models x N fotos x 3 passades
+node scripts/benchmark/visio.js --models claude-haiku-4-5 --passades 5
+```
+
+Aquest **sí que gasta diners**: fa crides reals. Per això diu quant ha gastat al final i
+té `--assaig`.
+
+### El material de prova, que no va al repo
+
+Per defecte a `~/dictats-bench/fotos/`. Cada foto va amb un `.txt` del mateix nom que diu
+**què hi ha escrit al paper de veritat, faltes incloses** — el que es mesura és si el model
+transcriu, no si corregeix:
+
+```
+a11-clara.jpg   + a11-clara.txt      lletra clara
+a11-rapida.jpg  + a11-rapida.txt     lletra rapida i pitjor
+a12-clara.jpg   + a12-clara.txt
+a12-faltes.jpg  + a12-faltes.txt     amb faltes posades a posta
+```
+
+El ground truth surt gratis perquè qui escriu el paper ja sap què hi ha escrit, igual que
+`injecta.js` amb el text. **Les fotos no es pugen** — si el text ve dels
+[310 dictats oficials de la Generalitat](https://llengua.gencat.cat/ca/serveis/aprendre_catala/recursos-per-al-professorat/dictats-en-linia/),
+és contingut amb drets d'ells (avís de l'Óscar a la #22). Els números sí que es publiquen.
+
+### El prompt no es copia, s'extreu
+
+`visio.js` llegeix `PROMPT_TRANSCRIPCIO` de `src/routes/dictats.js` en temps d'execució. Si
+en tingués una còpia i algú afinés el de producció, el benchmark deixaria de comparar
+models i passaria a comparar prompts sense que ningú se n'adonés.
+
+### Els preus, i una correcció a la taula de la Issue
+
+| Model | Entrada $/1M | Sortida $/1M |
+|---|---|---|
+| `claude-opus-4-6` (el de producció) | $5,00 | $25,00 |
+| `claude-sonnet-5` | **$2,00** | **$10,00** |
+| `claude-haiku-4-5` | $1,00 | $5,00 |
+
+⚠️ La taula de la #22 diu que Sonnet 5 val $3/$15. Aquell és el preu de **Sonnet 4.6**.
+Sonnet 5 és **més barat** del que la Issue suposa, cosa que pot canviar la conclusió.
+Verificat a la documentació oficial d'Anthropic (09-2026).
+
+Fable i Mythos no hi són a posta: són el tram més car i escriure una transcripció no
+necessita el màxim de raonament que existeix. L'objectiu no és «quin model és millor» sinó
+**quin és el més barat que és prou bo**.
+
+### Què treu
+
+Una taula amb errors de transcripció de mitjana, cost real per correcció (del camp `usage`,
+no estimat), latència p50/p95 i % de JSON vàlid — i, al final, **el més barat que baixa d'1
+error de transcripció de mitjana**. Si cap ho aconsegueix ho diu en comptes de triar-ne un:
+amb aquella lletra, el camí de la foto ensenyaria faltes no comeses amb qualsevol d'ells.
+
 ## Què falta per tancar la #22
 
-- [ ] Passada del camí de **text** amb diversos models: qualitat de l'explicació, latència
-      p50/p95 i **cost real del camp `usage`**. Cal clau d'API.
-- [ ] Passada del camí de **foto**: cal clau i manuscrit real fotografiat. **És la que
-      decideix**, per tot el que hi ha explicat més amunt.
+- [x] `visio.js` escrit i provat en els camins que no gasten (`--assaig`, model sense preu,
+      clau absent, carpeta absent, extracció del prompt)
+- [ ] **Les fotos**: 4 manuscrits fotografiats. És feina de paper i mòbil, no de codi
+- [ ] Una clau d'API vàlida a `.env` (la local val `PENDIENTE`; la bona és a la VM)
+- [ ] Executar-lo i enganxar la taula aquí
+- [ ] Passada del camí de **text**: qualitat de l'explicació i cost. Menys urgent — el
+      model ja no busca els errors, només els redacta
 - [ ] Taula de resultats i recomanació. La tria és de l'Óscar.
