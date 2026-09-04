@@ -7,6 +7,25 @@
 > mentir-hi és motiu de retirada. Per això **tot el que hi ha aquí surt d'auditar el codi**,
 > amb el fitxer i la línia al costat, no de suposar-lo.
 
+> ## ⚠️ Llegeix això abans d'omplir el formulari (4-09-2026)
+>
+> Aquest document es va escriure auditant la **Fase 0** (identitat pròpia amb bcrypt i
+> Google OAuth), que viu a la branca `v10` i **no és a producció**. La Fase 0 es refà amb
+> **Firebase Auth** (decisió del 4-09, issue #16), així que **les files d'identitat d'aquí
+> descriuen un sistema que encara no existeix**:
+>
+> | Fila | Diu | Què passa avui a producció |
+> |---|---|---|
+> | Contrasenya | Hash de bcrypt de 12 rondes | Dictats **no en desa cap**: comprova el compte contra el sistema de comptes compartit amb els altres serveis del responsable |
+> | `google_id` | S'hi desa | **No existeix**: no hi ha Google OAuth |
+> | Esborrat de dades | `DELETE /api/account` i `/esborrar-compte` | **Cap de les dues rutes existeix**; s'esborra escrivint al responsable |
+>
+> La resta —dictats, errors, textos, fotos, avisos d'IA, galeta, preferències— **sí que està
+> verificada contra el codi de producció**, i és el gruix del formulari.
+>
+> **Aquestes tres files s'han de reescriure quan Firebase entri, i abans d'enviar la fitxa.**
+> La política pública (`/privacitat`) ja diu el que el codi fa avui, no el que dirà.
+
 ## 0. Auditoria: què toca el codi, de veritat
 
 | Dada | On va a parar | Comprovat a |

@@ -22,7 +22,7 @@
   -->
   <div class="pagina-legal">
     <h1>Política de privacitat</h1>
-    <p class="text-muted">Darrera actualització: 31 d'agost de 2026</p>
+    <p class="text-muted">Darrera actualització: 4 de setembre de 2026</p>
 
     <p>
       <strong>Dictats en Català</strong> serveix per practicar dictats en català i rebre'n
@@ -47,12 +47,11 @@
         </tr>
         <tr>
           <td><strong>Contrasenya</strong></td>
-          <td>Entrar. Es desa <strong>xifrada amb bcrypt</strong>: ni nosaltres la podem llegir</td>
-          <td>Execució del servei</td>
-        </tr>
-        <tr>
-          <td><strong>Identificador de Google</strong>, si entres amb Google</td>
-          <td>Reconèixer-te sense contrasenya. De Google només se'n rep l'identificador, el correu i el nom</td>
+          <td>
+            Entrar. <strong>Dictats no en desa cap</strong>: s'entra amb el compte
+            que ja tens als serveis del mateix responsable, i l'app només comprova
+            que sigui correcta contra aquell sistema de comptes
+          </td>
           <td>Execució del servei</td>
         </tr>
         <tr>
@@ -134,9 +133,13 @@
 
     <h2>On viuen les dades</h2>
     <ul>
-      <li>El <strong>compte</strong> (correu, contrasenya xifrada, nom) en una base de dades MySQL.</li>
-      <li>El <strong>progrés</strong> i els teus textos, en una base de dades local del servidor.</li>
-      <li>Els dos servidors són a la Unió Europea.</li>
+      <li>
+        El <strong>compte</strong> (correu i nom) viu en una base de dades de comptes
+        <strong>compartida amb els altres serveis del mateix responsable</strong>: si ja
+        en tens un, és el mateix. Dictats hi llegeix per comprovar qui ets, i prou.
+      </li>
+      <li>El <strong>progrés</strong>, els errors i els teus textos, en una base de dades del servidor de Dictats.</li>
+      <li>El servidor de Dictats és a la <strong>Unió Europea</strong> (Bèlgica).</li>
     </ul>
 
     <h2>Al teu dispositiu</h2>
