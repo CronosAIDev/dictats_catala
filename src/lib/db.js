@@ -116,6 +116,27 @@ db.exec(`
     PRIMARY KEY (email, dia)
   );
 
+  -- Escriptura lliure (F29).
+  --
+  -- Fixeu-vos en el que NO hi ha: no hi ha cap columna amb el text. El que
+  -- escrius no es desa enlloc, com la foto d'un dictat a mà. Aquí només queda
+  -- que ho has fet, de quin tema, quantes paraules i quantes observacions
+  -- van sortir — prou per a un historial i per a la ratxa, i res més.
+  --
+  -- No va a user_progress a posta: allà tot està construït sobre comparar amb
+  -- un original (l'escala, els punts, els errors per 100 paraules). Un text
+  -- lliure no té original, i barrejar-ho trencaria en silenci tres coses.
+  CREATE TABLE IF NOT EXISTS escriptures (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    email TEXT NOT NULL,
+    tema TEXT,
+    paraules INTEGER NOT NULL,
+    observacions INTEGER NOT NULL DEFAULT 0,
+    model TEXT,
+    created_at TEXT DEFAULT (datetime('now'))
+  );
+  CREATE INDEX IF NOT EXISTS idx_escriptures_email ON escriptures (email, created_at);
+
   CREATE INDEX IF NOT EXISTS idx_user_errors_email ON user_errors (email, created_at);
   CREATE INDEX IF NOT EXISTS idx_user_errors_type  ON user_errors (email, type);
   CREATE INDEX IF NOT EXISTS idx_user_progress_email ON user_progress (email, completed_at);

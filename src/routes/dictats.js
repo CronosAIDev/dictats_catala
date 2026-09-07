@@ -14,6 +14,8 @@ const taxonomia = require('../lib/taxonomia');
 const onfalles = require('../lib/onfalles');
 const repesca = require('../lib/repesca');
 const micro = require('../lib/micro');
+const escriptura = require('../lib/escriptura');
+const temes = require('../../data/temes');
 const { treuPuntuacio } = require('../lib/paraules');
 const texts = require('../../data/texts');
 
@@ -760,6 +762,68 @@ router.post('/micro', requireAuth, (req, res) => {
   }
 
   res.json({ ...micro.resultat(encerts, detall.length), detall, avui: microAvui(email) });
+});
+
+// ── Escriptura lliure (F29) ──────────────────────────────────
+//
+// L'única part de l'app que NO funciona sense clau d'API: aquí no hi ha text
+// original amb què comparar, així que no hi ha res determinista a fer. Quan no
+// n'hi ha, es diu; no es dissimula amb un error genèric.
+
+function hiHaClau() {
+  const k = String(process.env.ANTHROPIC_API_KEY || '');
+  return k.startsWith('sk-');
+}
+
+router.get('/temes', requireAuth, (req, res) => {
+  res.json({ temes, clau: hiHaClau() });
+});
+
+router.post('/escriure', requireAuth, limitaCorreccions, async (req, res) => {
+  const { tema, text } = req.body || {};
+  const comprovacio = escriptura.valida(text);
+  if (!comprovacio.ok) return res.status(400).json({ error: comprovacio.error });
+
+  if (!hiHaClau()) {
+    return res.status(503).json({
+      error: 'Aquesta part necessita la connexió amb Claude i ara mateix no hi és. '
+        + 'Els dictats segueixen funcionant: la seva correcció es fa aquí, sense sortir del servidor.',
+    });
+  }
+
+  const elTema = temes.find((t) => t.id === tema);
+  let resposta;
+  try {
+    const message = await anthropic.messages.create({
+      model: MODEL,
+      max_tokens: 4096,
+      messages: [{ role: 'user', content: escriptura.PROMPT(elTema ? elTema.proposta : 'lliure', text) }],
+    });
+    resposta = parseClaudeJSON(message.content[0].text);
+  } catch (err) {
+    console.error('Claude escriptura error:', err.status, err.message);
+    return res.status(502).json({ error: 'No s\'ha pogut corregir ara mateix. Torna a provar.' });
+  }
+
+  const net = escriptura.neteja(resposta, text);
+
+  // Es desa que ho has fet, no el que has escrit.
+  try {
+    db.prepare(`
+      INSERT INTO escriptures (email, tema, paraules, observacions, model)
+      VALUES (?, ?, ?, ?, ?)
+    `).run(req.session.profile.email, elTema ? elTema.id : null,
+      comprovacio.paraules, net.observacions.length, MODEL);
+  } catch (dbErr) {
+    console.error('DB error desant escriptura:', dbErr.message);   // es respon igual
+  }
+
+  res.json({
+    ...net,
+    paraules: comprovacio.paraules,
+    resum: escriptura.resum(net.observacions, comprovacio.paraules),
+    model: MODEL,
+  });
 });
 
 // ── Perfil / historial ───────────────────────────────────────

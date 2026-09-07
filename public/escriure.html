@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="ca">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Escriure — Dictats en Català</title>
+  <link rel="stylesheet" href="/style.css">
+  <meta name="theme-color" content="#2563eb">
+  <link rel="icon" href="/icons/icon-192.png">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Dictats">
+  <script src="/a11y.js" defer></script>
+  <script src="/report.js" defer></script>
+  <script src="/pwa.js" defer></script>
+</head>
+<body>
+  <div class="app-shell">
+    <header class="app-header">
+      <div class="logo">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <path d="M12 20h9M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/>
+        </svg>
+        Dictats en Català
+      </div>
+      <div class="user-info">
+        <a href="/mobile" class="btn btn-ghost btn-sm">← Tornar</a>
+      </div>
+    </header>
+
+    <main class="app-main">
+      <h2 style="font-size:1.25rem;font-weight:600;margin-bottom:6px;letter-spacing:-.02em">Escriure</h2>
+      <p class="corba-nota" style="margin:0 0 20px">Un dictat entrena l'ortografia. La gramàtica
+        s'entrena escrivint tu.</p>
+
+      <!-- Triar tema -->
+      <div id="esc-temes">
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Sobre què vols escriure?</span>
+          </div>
+          <div class="card-body">
+            <div id="esc-llista"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Escriure -->
+      <div id="esc-escriure" style="display:none">
+        <div class="card" style="margin-bottom:16px">
+          <div class="card-body">
+            <div class="esc-tema" id="esc-proposta"></div>
+            <div class="corba-nota" id="esc-pista" style="margin-top:4px"></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-body">
+            <div class="form-group" style="margin-bottom:0">
+              <label class="form-label" for="esc-text">El teu text</label>
+              <textarea id="esc-text" class="form-input textarea"
+                style="min-height:240px;font-size:1.0625rem"
+                placeholder="Escriu aquí. Vuit o deu línies n'hi ha prou."></textarea>
+            </div>
+            <div class="esc-peu">
+              <span class="corba-nota" id="esc-compte"></span>
+              <button class="btn btn-primary" id="esc-corregir" disabled>Corregir</button>
+            </div>
+            <p class="corba-nota" id="esc-avis" style="margin:10px 0 0"></p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Esperant -->
+      <div id="esc-carregant" style="display:none;text-align:center;padding:48px;color:var(--text-muted)">
+        <div class="spinner" style="margin:0 auto 12px"></div>
+        Llegint el que has escrit…
+      </div>
+
+      <!-- Resultat -->
+      <div id="esc-resultat" style="display:none">
+        <div class="card" style="margin-bottom:16px">
+          <div class="card-body">
+            <div class="scale-label scale-good" id="esc-resum" style="font-size:1.125rem"></div>
+            <p id="esc-comentari" class="corba-millora"></p>
+          </div>
+        </div>
+        <div class="card" id="esc-obs-card">
+          <div class="card-header"><span class="card-title">El que val la pena mirar</span></div>
+          <div class="card-body" style="padding:0"><div id="esc-obs"></div></div>
+        </div>
+        <div style="display:flex;gap:8px;justify-content:center;margin-top:20px;flex-wrap:wrap">
+          <button class="btn btn-primary" id="esc-altre">Escriure un altre</button>
+          <a href="/mobile" class="btn btn-ghost">Tornar</a>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    const $ = id => document.getElementById(id);
+    function escapeHtml(str) {
+      return String(str ?? '')
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    }
+    const enrere = String(document.referrer || '').includes('/mobile') ? '/mobile' : '/';
+    document.querySelectorAll('a[href="/mobile"]').forEach(a => { a.href = enrere; });
+
+    const MIN = 40;
+    let tema = null;
+    let hiHaClau = true;
+
+    async function carrega() {
+      const res = await fetch('/api/temes');
+      if (res.status === 401) return (window.location.href = '/login');
+      const d = await res.json();
+      hiHaClau = d.clau;
+      $('esc-llista').innerHTML = (d.temes || []).map(t => `
+        <div class="text-item esc-item" data-id="${escapeHtml(t.id)}">
+          <div style="flex:1">
+            <div class="text-title">${escapeHtml(t.titol)}</div>
+            <div class="text-meta">${escapeHtml(t.proposta)}</div>
+          </div>
+        </div>`).join('');
+      document.querySelectorAll('.esc-item').forEach(el => {
+        el.addEventListener('click', () => tria((d.temes || []).find(t => t.id === el.dataset.id)));
+      });
+    }
+
+    function tria(t) {
+      tema = t;
+      $('esc-temes').style.display = 'none';
+      $('esc-escriure').style.display = '';
+      $('esc-proposta').textContent = t.proposta;
+      $('esc-pista').textContent = t.pista;
+      // Si no hi ha connexió amb el model es diu ABANS d'escriure, no després
+      // d'haver escrit deu línies.
+      $('esc-avis').textContent = hiHaClau
+        ? 'El que escrius s\'envia a Claude per corregir-lo, i no es desa enlloc.'
+        : 'Ara mateix no hi ha connexió amb Claude, així que això no es podrà corregir. Els dictats sí que funcionen.';
+      $('esc-text').focus();
+      compta();
+    }
+
+    function compta() {
+      const net = $('esc-text').value.replace(/\s+/g, ' ').trim();
+      const n = net ? net.split(' ').length : 0;
+      $('esc-compte').textContent = n < MIN ? `${n} de ${MIN} paraules` : `${n} paraules`;
+      $('esc-corregir').disabled = n < MIN || !hiHaClau;
+    }
+    $('esc-text').addEventListener('input', compta);
+
+    async function corregeix() {
+      $('esc-escriure').style.display = 'none';
+      $('esc-carregant').style.display = '';
+      let d;
+      try {
+        const res = await fetch('/api/escriure', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ tema: tema.id, text: $('esc-text').value }),
+        });
+        if (res.status === 401) return (window.location.href = '/login');
+        d = await res.json();
+        if (!res.ok) throw new Error(d.error || 'No s\'ha pogut corregir.');
+      } catch (e) {
+        $('esc-carregant').style.display = 'none';
+        $('esc-escriure').style.display = '';
+        $('esc-avis').textContent = e.message;
+        return;
+      }
+      $('esc-carregant').style.display = 'none';
+      $('esc-resum').textContent = d.resum || '';
+      $('esc-comentari').textContent = d.comentari || '';
+      const obs = d.observacions || [];
+      $('esc-obs-card').style.display = obs.length ? '' : 'none';
+      $('esc-obs').innerHTML = obs.map(o => `
+        <div class="error-item">
+          <span class="error-type">${escapeHtml(o.regla)}</span>
+          <div class="error-detail">
+            <div class="error-words">
+              <span class="wrong">${escapeHtml(o.fragment)}</span>
+              <span class="arrow">→</span>
+              <span class="right">${escapeHtml(o.proposta)}</span>
+            </div>
+            <div class="error-explanation">
+              <span>${escapeHtml(o.perque)}</span>
+              ${window.Avisos ? window.Avisos.boto({
+                generada: true, kind: 'explicacio', content: o.perque,
+                context: `escriptura · ${o.regla}: ${o.fragment} -> ${o.proposta}`,
+              }) : ''}
+            </div>
+          </div>
+        </div>`).join('');
+      $('esc-resultat').style.display = '';
+      if (window.A11y) window.A11y.anuncia(d.resum || '');
+    }
+    $('esc-corregir').addEventListener('click', corregeix);
+
+    $('esc-altre').addEventListener('click', () => {
+      $('esc-resultat').style.display = 'none';
+      $('esc-text').value = '';
+      $('esc-temes').style.display = '';
+      tema = null;
+    });
+
+    carrega();
+  </script>
+</body>
+</html>

@@ -59,6 +59,15 @@ model i el text hi anava sencer.
 **Camí de foto.** La imatge sí que s'envia sencera, perquè transcriure un manuscrit no es
 pot fer d'una altra manera. No es desa enlloc.
 
+**Camí d'escriptura lliure (F29).** El text que l'usuari escriu **sí que s'envia sencer**:
+no hi ha original amb què comparar, i corregir la gramàtica d'un text sense el text no es
+pot fer. **No es desa**: a `escriptures` només hi ha el tema, el nombre de paraules i quantes
+observacions van sortir — la taula **no té cap columna de text**, a posta.
+
+> ⚠️ Aquest camí és l'excepció a la frase d'aquí sobre. Es va afegir el 07-09 amb F29, i la
+> política de `/privacitat` es va canviar **la mateixa versió**: deixar-la dient «el text
+> sencer no surt mai» hauria estat publicar una política falsa.
+
 ### El que NO hi ha
 
 Cap analítica, cap SDK de tercers, cap identificador de publicitat, cap permís del sistema
@@ -81,7 +90,7 @@ sessió (`src/index.js:66`) — cap correu.
 | **Informació personal › Nom** | Sí | No | **No** | Gestió del compte |
 | **Informació personal › ID d'usuari** (`google_id`) | Sí | No | No | Gestió del compte |
 | **Fotos i vídeos › Fotos** | Sí, **processada de manera efímera** | **Sí** → Anthropic | No | Funcionalitat de l'app |
-| **Activitat a l'app › Un altre contingut generat per l'usuari** (dictats i textos propis) | Sí | **Sí**, parcialment → Anthropic | Sí | Funcionalitat de l'app |
+| **Activitat a l'app › Un altre contingut generat per l'usuari** (dictats, textos propis i escriptura lliure) | Sí, **menys el text d'«Escriure», que no es desa** | **Sí** → Anthropic (parcial als dictats, sencer a foto i a «Escriure») | Sí | Funcionalitat de l'app |
 
 **Per què «es comparteix: sí» a les dues últimes**, tot i que Anthropic actua com a
 proveïdor: perquè les dades surten cap a un tercer i **declarar de menys és el que fa que
