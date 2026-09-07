@@ -134,18 +134,17 @@ afegeixColumnaSiFalta('user_progress', 'feedback_generat', 'INTEGER NOT NULL DEF
 // costat i les files no la desen.
 afegeixColumnaSiFalta('user_errors', 'taxonomia', 'INTEGER NOT NULL DEFAULT 0');
 
-const VERSIO_TAXONOMIA = 1;
 function reclassifica() {
+  const taxonomia = require('./taxonomia');
   const pendents = db.prepare(
     'SELECT id, original, user_wrote FROM user_errors WHERE taxonomia < ?'
-  ).all(VERSIO_TAXONOMIA);
+  ).all(taxonomia.VERSIO);
   if (pendents.length === 0) return;
 
-  const taxonomia = require('./taxonomia');
   const actualitza = db.prepare('UPDATE user_errors SET type = ?, taxonomia = ? WHERE id = ?');
   const totes = db.transaction((files) => {
     for (const f of files) {
-      actualitza.run(taxonomia.classifica(f.original, f.user_wrote), VERSIO_TAXONOMIA, f.id);
+      actualitza.run(taxonomia.classifica(f.original, f.user_wrote), taxonomia.VERSIO, f.id);
     }
   });
   totes(pendents);
