@@ -10,6 +10,7 @@ const rang = require('../lib/rang');
 const motivacio = require('../lib/motivacio');
 const textos = require('../lib/textos');
 const progres = require('../lib/progres');
+const taxonomia = require('../lib/taxonomia');
 const texts = require('../../data/texts');
 
 const router = express.Router();
@@ -127,22 +128,19 @@ router.delete('/user-texts/:id', requireAuth, (req, res) => {
 // Si el pas 2 falla, el dictat es corregeix igual. Abans, un error de l'API
 // deixava l'alumne sense correcció.
 
-const EXPLICACIONS_PER_DEFECTE = {
-  'apostrofació': 'Revisa l\'apòstrof: davant de vocal, l\'article i els pronoms s\'apostrofen.',
-  'accentuació': 'Revisa l\'accent d\'aquesta paraula.',
-  'majúscules': 'Revisa la majúscula.',
-  'puntuació': 'Revisa el signe de puntuació.',
-  'ortografia': 'Revisa com s\'escriu aquesta paraula.',
-  'paraula incorrecta': 'Aquesta no és la paraula del dictat.',
-  'paraula omesa': 'Aquesta paraula no s\'ha escrit.',
-  'paraula afegida': 'Aquesta paraula no era al dictat.',
-};
+// Quan el model no ha explicat un error —perquè l'API ha fallat o encara no
+// s'han demanat les explicacions— es diu la regla de la categoria. Viu al
+// catàleg de F25 i no aquí, perquè la categoria i el que se'n diu no es puguin
+// separar.
+const perDefecte = (tipus) => taxonomia.regla(tipus);
 
 const PROMPT_EXPLICACIONS = (diferencies) => `Ets un professor de català.
 
 Un alumne ha fet un dictat i la comparació amb el text original ja està feta, paraula per paraula. NO l'has de refer ni discutir: dona-la per bona.
 
-La teva única feina és, per a cada diferència, escriure una explicació breu en català (màxim 15 paraules) que digui quina regla s'ha vulnerat i com es recorda. Escriu també un missatge final d'ànim de dues frases com a màxim.
+Cada diferència ja porta la seva regla al camp "regla": és la bona i NO l'has de canviar per una altra.
+
+La teva única feina és, per a cada diferència, escriure una explicació breu en català (màxim 15 paraules) que apliqui AQUELLA regla a AQUESTA paraula i digui com es recorda. Escriu també un missatge final d'ànim de dues frases com a màxim.
 
 DIFERÈNCIES:
 ${JSON.stringify(diferencies)}
@@ -214,7 +212,7 @@ function corregeix(originalText, userText, puntuacioDictada) {
 // Ara la correcció surt de seguida i les explicacions vénen per una segona
 // petició. Les dues coses que ja hi havia i que ho fan segur:
 //
-//   · Quan l'API falla, `EXPLICACIONS_PER_DEFECTE` omple els buits. Ja era
+//   · Quan l'API falla, la regla de la categoria (F25) omple els buits. Ja era
 //     així, i per això la separació no afegeix cap camí de fallada nou: el
 //     pitjor cas de la segona petició és el mateix que el d'una API caiguda.
 //   · `generada` distingeix el que escriu el model del que escrivim nosaltres,
@@ -223,7 +221,7 @@ function corregeix(originalText, userText, puntuacioDictada) {
 /** Omple amb text nostre el que el model no hagi escrit. Mai un error mut. */
 function completaPerDefecte(llista, correccio) {
   llista.forEach((e) => {
-    if (!e.explanation) e.explanation = EXPLICACIONS_PER_DEFECTE[e.type] || '';
+    if (!e.explanation) e.explanation = perDefecte(e.type);
   });
   if (!correccio.feedback) correccio.feedback = correccio.scale.sub;
 }
@@ -246,6 +244,10 @@ async function demanaExplicacions(llista, correccio) {
     correcte: e.original,
     escrit: e.userWrote,
     tipus: e.type,
+    // La regla ja està decidida per l'algorisme (F25). Dir-la-hi evita que el
+    // model n'expliqui una altra: sense això, davant de `caça`/`caca` parlava
+    // d'accents.
+    regla: taxonomia.regla(e.type),
   }));
 
   try {
@@ -406,7 +408,7 @@ router.post('/explicacions/:id', requireAuth, async (req, res) => {
 
   const respostaDesada = () => res.json({
     explicacions: files.map(f => ({
-      explanation: f.explanation || EXPLICACIONS_PER_DEFECTE[f.type] || '',
+      explanation: f.explanation || perDefecte(f.type),
       generada: !!f.generada,
     })),
     feedback: progres.feedback,
