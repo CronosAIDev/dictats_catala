@@ -65,6 +65,19 @@
         <!-- Stats -->
         <div class="stats-grid" id="stats-grid"></div>
 
+        <!-- De què són els teus errors (F26) -->
+        <div class="card" id="falles-card" style="margin-bottom:20px;display:none">
+          <div class="card-header">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 20V10M12 20V4M18 20v-6"/></svg>
+            <span class="card-title">De què són els teus errors</span>
+            <span class="corba-nota" id="falles-abast" style="margin-left:auto"></span>
+          </div>
+          <div class="card-body">
+            <p id="falles-titular" class="falles-titular"></p>
+            <div id="falles-llista"></div>
+          </div>
+        </div>
+
         <!-- Corba de progrés (F36) -->
         <div class="card" id="corba-card" style="margin-bottom:20px;display:none">
           <div class="card-header">
@@ -187,6 +200,31 @@
           <div class="stat-label">${ratxaText(data.stats.ratxa)}</div>
         </div>
       `;
+
+      // De què són els errors (F26). Amb la taxonomia de F25, «ortografia» ha
+      // deixat de ser la resposta a tot i això es pot contestar de veritat.
+      const falles = data.onFalles;
+      if (falles && falles.regles && falles.regles.length) {
+        document.getElementById('falles-card').style.display = '';
+        document.getElementById('falles-abast').textContent =
+          falles.dictats === 1 ? 'l\'últim dictat' : `els últims ${falles.dictats} dictats`;
+        document.getElementById('falles-titular').textContent = falles.titular || '';
+        // La regla només s'ensenya de la primera: si es posessin totes, la
+        // pantalla passaria a ser un llibre de gramàtica i no es llegiria cap.
+        document.getElementById('falles-llista').innerHTML = falles.regles.map((r, i) => `
+          <div class="falla">
+            <div class="falla-cap">
+              <span class="falla-nom">${escapeHtml(r.nom)}</span>
+              <span class="falla-quants">${r.quants}</span>
+            </div>
+            <div class="falla-barra"><div class="falla-barra-plena" style="width:${r.part}%"></div></div>
+            ${i === 0 ? `<p class="falla-regla">${escapeHtml(r.regla)}</p>` : ''}
+          </div>
+        `).join('') + (falles.resta && falles.resta.regles
+          ? `<p class="falla-resta">I ${falles.resta.regles} regles més, amb `
+            + `${falles.resta.errors} error${falles.resta.errors === 1 ? '' : 's'} en total.</p>`
+          : '');
+      }
 
       // La corba (F36). Només es pinta si hi ha alguna setmana amb dades
       // comparables: un gràfic buit no informa de res i ocupa mitja pantalla.

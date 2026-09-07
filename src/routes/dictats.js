@@ -11,6 +11,7 @@ const motivacio = require('../lib/motivacio');
 const textos = require('../lib/textos');
 const progres = require('../lib/progres');
 const taxonomia = require('../lib/taxonomia');
+const onfalles = require('../lib/onfalles');
 const texts = require('../../data/texts');
 
 const router = express.Router();
@@ -549,6 +550,30 @@ router.get('/profile', requireAuth, (req, res) => {
   const xifres = progres.resum(files);
   const corba = progres.setmanes(files);
 
+  // De què són els errors dels últims dictats (F26).
+  //
+  // `counted = 1` deixa fora els avisos: quan la puntuació no s'ha dictat, els
+  // errors de puntuació no compten a l'escala i tampoc han de comptar aquí —
+  // ensenyarien un forat que no és de qui escriu.
+  //
+  // El filtre per `email` hi és dues vegades a posta: la subconsulta ja ho
+  // acota, però una condició d'aïllament no ha de dependre d'una subconsulta
+  // que algun dia es pugui reescriure.
+  const ultims = db.prepare(`
+    SELECT id FROM user_progress WHERE email = ?
+    ORDER BY completed_at DESC, id DESC LIMIT ?
+  `).all(email, onfalles.DICTATS_A_MIRAR).map(r => r.id);
+
+  const comptes = ultims.length ? db.prepare(`
+    SELECT type, COUNT(*) AS quants
+    FROM user_errors
+    WHERE email = ? AND counted = 1
+      AND progress_id IN (${ultims.map(() => '?').join(',')})
+    GROUP BY type
+  `).all(email, ...ultims) : [];
+
+  const falles = onfalles.perfil(comptes, ultims.length);
+
   res.json({
     email,
     first_name: req.session.profile.first_name,
@@ -566,6 +591,7 @@ router.get('/profile', requireAuth, (req, res) => {
     },
     setmanes: corba,
     tendencia: progres.tendencia(corba),
+    onFalles: { ...falles, titular: onfalles.titular(falles) },
     rank: estatDeRang(email),
     ranks: rang.RANGS.map(r => ({ id: r.id, nom: r.nom, punts: r.punts, que: r.que })),
     history: recents,
