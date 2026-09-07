@@ -81,8 +81,8 @@
     }).join('');
 
     const svg = `
-      <svg viewBox="0 0 ${AMPLE} ${ALT}" width="100%" height="auto"
-           aria-hidden="true" focusable="false" style="display:block">
+      <svg viewBox="0 0 ${AMPLE} ${ALT}" width="100%" preserveAspectRatio="xMidYMid meet"
+           aria-hidden="true" focusable="false" style="display:block;height:auto">
         <line x1="${ESQ}" x2="${AMPLE - DRETA}" y1="${DALT}" y2="${DALT}"
               stroke="var(--border)" stroke-width="1" stroke-dasharray="2 3"/>
         <line x1="${ESQ}" x2="${AMPLE - DRETA}" y1="${DALT + altUtil}" y2="${DALT + altUtil}"
