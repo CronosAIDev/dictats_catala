@@ -40,7 +40,10 @@ const RANGS = [
 
 // Quant val cada nivell. Un text avançat fa treballar molt més que un de bàsic
 // i ho ha de notar.
-const DIFICULTAT = { basic: 1, intermedi: 1.5, avancat: 2.2, personal: 1.2 };
+// `repas` val 1 i no més: una sessió de repàs barreja frases de nivells
+// diferents i premiar-la per sobre del bàsic convidaria a pujar de rang
+// repassant en comptes de fent dictats nous.
+const DIFICULTAT = { basic: 1, intermedi: 1.5, avancat: 2.2, personal: 1.2, repas: 1 };
 
 // Els textos del banc, de mitjana, per poder puntuar els dictats antics que es
 // van desar abans que es guardés el nombre de paraules.

@@ -12,6 +12,7 @@ const textos = require('../lib/textos');
 const progres = require('../lib/progres');
 const taxonomia = require('../lib/taxonomia');
 const onfalles = require('../lib/onfalles');
+const repesca = require('../lib/repesca');
 const texts = require('../../data/texts');
 
 const router = express.Router();
@@ -120,6 +121,60 @@ router.delete('/user-texts/:id', requireAuth, (req, res) => {
   ).run(req.params.id, req.session.profile.email);
   res.json({ ok: true });
 });
+
+// ── Repesca (F27) ────────────────────────────────────────────
+
+/** El text que hi ha darrere d'un `text_id`, sigui del banc o personal. */
+function textDe(email, textId) {
+  const id = String(textId || '');
+  if (id.startsWith('personal_')) {
+    const fila = db.prepare('SELECT text FROM user_texts WHERE id = ? AND email = ?')
+      .get(id.slice('personal_'.length), email);
+    return fila ? fila.text : null;
+  }
+  for (const nivell of Object.keys(texts)) {
+    const t = texts[nivell].find((x) => x.id === id);
+    if (t) return t.text;
+  }
+  return null;
+}
+
+/** Avui, en data local, que és amb el que es compara `toca_el`. */
+const avui = () => motivacio.dia(new Date());
+
+/**
+ * Apunta les frases fallades perquè tornin (F27).
+ *
+ * Només compten els errors que compten: si la puntuació no s'ha dictat, els
+ * seus errors no han de fer tornar una frase que en realitat has escrit bé.
+ *
+ * Si la frase ja hi era, torna a baix de tot. Fallar-la avui vol dir que no la
+ * saps, encara que fa una setmana l'encertessis.
+ */
+function apuntaFallades(email, parelles) {
+  if (!parelles.length) return;
+  const dema = repesca.properaData(0, new Date());
+  const posa = db.prepare(`
+    INSERT INTO repesca (email, text_id, frase, passada, toca_el)
+    VALUES (?, ?, ?, 0, ?)
+    ON CONFLICT (email, text_id, frase) DO UPDATE SET
+      passada = 0, toca_el = excluded.toca_el, fallades = fallades + 1
+  `);
+  db.transaction((llista) => {
+    for (const [textId, frase] of llista) posa.run(email, textId, frase, dema);
+  })(parelles);
+}
+
+/** De quines frases són els errors que compten, per a un text sencer. */
+function frasesFallades(textOriginal, correccio) {
+  const limits = repesca.talls(textOriginal);
+  const fora = new Set();
+  for (const e of correccio.errors) {
+    const f = repesca.fraseDe(limits, e.position);
+    if (f !== null) fora.add(f);
+  }
+  return [...fora];
+}
 
 // ── Correcció ────────────────────────────────────────────────
 //
@@ -370,6 +425,19 @@ function respon(req, res, correccio, meta) {
 
   const abans = historialAbans(email);
   const progressId = desa(email, correccio, meta);
+
+  // Les frases fallades tornen (F27). Va aquí i no a `desa()` perquè fa falta
+  // el text original, que `desa()` no rep: només compta errors.
+  if (meta.originalText && meta.textId && meta.textId !== 'repas') {
+    try {
+      apuntaFallades(email, frasesFallades(meta.originalText, correccio)
+        .map((f) => [meta.textId, f]));
+    } catch (err) {
+      // Que fallar aquí no es mengi la correcció, que és el que importa.
+      console.error('Repesca:', err.message);
+    }
+  }
+
   correccio.rank = estatDeRang(email);
   afegeixAnim(email, correccio, abans);
 
@@ -457,7 +525,7 @@ router.post('/correct', requireAuth, limitaCorreccions, async (req, res) => {
   const correccio = corregeix(originalText, userText, volPuntuacio(punctuationDictated));
   // Res de crides a l'API aquí: tot això ja està calculat i pot sortir ara
   // mateix (F33). Les explicacions les demana el client a `/api/explicacions`.
-  respon(req, res, correccio, { level, textId, textTitle });
+  respon(req, res, correccio, { level, textId, textTitle, originalText });
 });
 
 // ── Correcció per foto ───────────────────────────────────────
@@ -516,7 +584,118 @@ router.post('/correct-image', requireAuth, limitaCorreccions, upload.single('pho
 
   const correccio = corregeix(originalText, transcripcio, volPuntuacio(punctuationDictated));
   correccio.transcription = transcripcio;
-  respon(req, res, correccio, { level, textId, textTitle });
+  respon(req, res, correccio, { level, textId, textTitle, originalText });
+});
+
+// ── Repàs: les frases que has fallat tornen (F27) ────────────
+
+/** Les frases d'un text, amb els seus límits, sense demanar-lo dues vegades. */
+function limitsPerText(email) {
+  const cache = new Map();
+  return (id) => {
+    if (!cache.has(id)) cache.set(id, repesca.talls(textDe(email, id) || ''));
+    return cache.get(id);
+  };
+}
+
+router.get('/repesca', requireAuth, (req, res) => {
+  const email = req.session.profile.email;
+  const files = db.prepare(`
+    SELECT text_id, frase FROM repesca
+    WHERE email = ? AND toca_el <= ?
+    ORDER BY toca_el ASC, id ASC
+  `).all(email, avui());
+
+  const limits = limitsPerText(email);
+  const toquen = [];
+  for (const f of files) {
+    const l = (limits(f.text_id) || [])[f.frase];
+    // Una frase que ja no existeix —text personal editat o esborrat— no fa
+    // caure el repàs: se salta i prou.
+    if (l) toquen.push({ text_id: f.text_id, frase: f.frase, text: l.text });
+  }
+  if (!toquen.length) return res.json({ pendents: 0, frases: [], text: '' });
+
+  // Farciment: frases dels MATEIXOS textos que avui no tocaven. És el que fa
+  // que no puguis saber quina és la que vas fallar.
+  const jaHi = new Set(toquen.map((f) => f.text_id + '#' + f.frase));
+  const altres = [];
+  for (const id of new Set(toquen.map((f) => f.text_id))) {
+    for (const l of limits(id)) {
+      if (!jaHi.has(id + '#' + l.frase)) altres.push({ text_id: id, frase: l.frase, text: l.text });
+    }
+  }
+
+  // Llavor del dia: recarregar la pàgina no rebaralla l'ordre.
+  const llavor = Number(avui().replace(/-/g, '')) + toquen.length;
+  const sessio = repesca.sessio(toquen, altres, llavor);
+
+  res.json({
+    pendents: toquen.length,
+    // El client NO sap quines són de repàs: si ho sabés, ho sabria qui mira.
+    frases: sessio.map((f) => ({ text_id: f.text_id, frase: f.frase, text: f.text })),
+    text: sessio.map((f) => f.text).join(' || '),
+  });
+});
+
+/**
+ * Corregeix una sessió de repàs i mou cada frase al seu lloc.
+ *
+ * Les que tocaven pugen un esglaó si s'encerten i tornen a baix si es fallen.
+ * Les de farciment no es toquen si van bé; si es fallen, entren a la repesca
+ * com qualsevol altra frase fallada.
+ */
+function movRepesca(email, frases, fallades) {
+  const busca = db.prepare('SELECT id, passada, toca_el FROM repesca WHERE email = ? AND text_id = ? AND frase = ?');
+  const puja = db.prepare('UPDATE repesca SET passada = ?, toca_el = ? WHERE id = ?');
+  const treu = db.prepare('DELETE FROM repesca WHERE id = ?');
+  const apreses = [];
+  const noves = [];
+
+  db.transaction(() => {
+    frases.forEach((f, i) => {
+      const textId = String(f && f.text_id || '');
+      const frase = Number(f && f.frase);
+      if (!textId || !Number.isInteger(frase)) return;
+      const encertada = !fallades.has(i);
+      const fila = busca.get(email, textId, frase);
+
+      if (fila && fila.toca_el <= avui()) {
+        const seguent = repesca.avanca(fila.passada, encertada);
+        if (seguent.apresa) { treu.run(fila.id); apreses.push(textId + '#' + frase); }
+        else puja.run(seguent.passada, seguent.tocaEl, fila.id);
+      } else if (!encertada && !fila) {
+        noves.push([textId, frase]);
+      }
+    });
+  })();
+
+  if (noves.length) apuntaFallades(email, noves);
+  return { apreses: apreses.length, noves: noves.length };
+}
+
+router.post('/repesca/correct', requireAuth, limitaCorreccions, (req, res) => {
+  const { originalText, userText, frases, punctuationDictated } = req.body;
+  if (!originalText || !userText || !Array.isArray(frases)) {
+    return res.status(400).json({ error: 'Falten dades' });
+  }
+  if (massaLlarg(originalText) || massaLlarg(userText)) {
+    return res.status(413).json({ error: `El text és massa llarg. El màxim són ${MAX_PARAULES} paraules.` });
+  }
+
+  const correccio = corregeix(originalText, userText, volPuntuacio(punctuationDictated));
+
+  const limits = repesca.talls(originalText);
+  const fallades = new Set();
+  for (const e of correccio.errors) {
+    const i = repesca.fraseDe(limits, e.position);
+    if (i !== null) fallades.add(i);
+  }
+  correccio.repas = movRepesca(req.session.profile.email, frases, fallades);
+
+  respon(req, res, correccio, {
+    level: 'repas', textId: 'repas', textTitle: 'Repàs', originalText,
+  });
 });
 
 // ── Perfil / historial ───────────────────────────────────────

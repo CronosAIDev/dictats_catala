@@ -16,6 +16,7 @@
   <script src="/a11y.js" defer></script>
   <script src="/textos.js" defer></script>
   <script src="/errors.js" defer></script>
+  <script src="/repas.js" defer></script>
   <script src="/rang.js" defer></script>
   <script src="/explicacions.js" defer></script>
   <script src="/anim.js" defer></script>
@@ -109,6 +110,15 @@
           <div class="mobile-level-card" data-level="intermedi"><div class="lv-icon">📖</div><div class="lv-name">Intermedi</div></div>
           <div class="mobile-level-card" data-level="avancat"><div class="lv-icon">🎓</div><div class="lv-name">Avançat</div></div>
           <div class="mobile-level-card" data-level="personal"><div class="lv-icon">✏️</div><div class="lv-name">Els meus</div></div>
+        </div>
+        <div class="card repas-card" id="m-repas-card" style="display:none;margin-bottom:20px">
+          <div class="card-body repas-cos">
+            <div>
+              <div class="repas-titol" id="m-repas-titol"></div>
+              <div class="repas-nota" id="m-repas-nota"></div>
+            </div>
+            <button class="btn btn-primary" id="m-repas-boto">Fer el repàs</button>
+          </div>
         </div>
         <button class="big-btn big-btn-ghost" id="m-btn-add-text" style="display:none;margin-bottom:14px">+ Afegir un text meu</button>
         <div id="m-text-resum" class="text-list-resum" style="margin:0 0 8px;display:none"></div>
@@ -313,7 +323,7 @@
       });
 
       // Sortir del dictat el pausa; abans es quedava sonant.
-      $('m-back-level').addEventListener('click', () => { motor.pausa(); showView('level'); });
+      $('m-back-level').addEventListener('click', () => { motor.pausa(); tornaANivells(); });
       $('m-btn-start').addEventListener('click', iniciaDictat);
       $('m-btn-repeat').addEventListener('click', () => motor.repeteix());
       $('m-btn-pause').addEventListener('click', () => motor.alternaPausa());
@@ -327,7 +337,7 @@
       $('m-photo-input').addEventListener('change', onPhoto);
       $('m-btn-correct-photo').addEventListener('click', corregeixFoto);
       $('m-btn-skip-photo').addEventListener('click', () => { renderSenseCorreccio(); showView('results'); });
-      $('m-btn-new').addEventListener('click', () => { reinicia(); showView('level'); });
+      $('m-btn-new').addEventListener('click', () => { reinicia(); tornaANivells(); });
 
       const rang = $('m-speech-rate');
       rang.value = String(motor.velocitat);
@@ -346,12 +356,14 @@
         desaPref('puntuacio', state.dictaPuntuacio);
       });
 
+      $('m-repas-boto').addEventListener('click', comencaRepas);
       $('m-btn-add-text').addEventListener('click', () => { $('m-modal-add').style.display = 'flex'; });
       $('m-cancel-add').addEventListener('click', () => { $('m-modal-add').style.display = 'none'; });
       $('m-save-text').addEventListener('click', desaTextPersonal);
 
       comprovaVeu();
       await loadTexts('basic');
+      miraRepas();
     }
 
     function mostraVelocitat() {
@@ -376,6 +388,46 @@
       }, 2500);
     }
     function avisVeu(text) { $('m-voice-warning').textContent = text; $('m-voice-warning').style.display = ''; }
+
+    /**
+     * Torna a la pantalla de nivells.
+     *
+     * Si veníem d'un repàs, `state.level` valia 'repas', que no és cap nivell
+     * de la llista: es torna a l'últim que sí que ho era. I es torna a mirar
+     * si queden frases, que després d'un dictat en poden haver sortit de noves.
+     */
+    function tornaANivells() {
+      if (state.level === 'repas') {
+        state.level = state.nivellAbans || 'basic';
+        for (const el of document.querySelectorAll('.mobile-level-card')) {
+          el.classList.toggle('active', el.dataset.level === state.level);
+        }
+        loadTexts(state.level);
+      }
+      miraRepas();
+      showView('level');
+    }
+
+    // ── El repàs (F27) ──────────────────────────────────
+    // Es consulta cada vegada que es torna a la pantalla de nivells: després
+    // d'un dictat pot haver-hi frases noves per repassar.
+    async function miraRepas() {
+      if (!window.Repas) return;
+      const sessio = await window.Repas.consulta();
+      state.repas = sessio;
+      const hi = sessio.pendents > 0;
+      $('m-repas-card').style.display = hi ? '' : 'none';
+      if (!hi) return;
+      $('m-repas-titol').textContent = window.Repas.etiqueta(sessio.pendents);
+      $('m-repas-nota').textContent = window.Repas.EXPLICACIO;
+    }
+
+    function comencaRepas() {
+      if (!state.repas || !state.repas.pendents) return;
+      state.nivellAbans = state.level;
+      state.level = 'repas';
+      obreDictat(window.Repas.comText(state.repas));
+    }
 
     // ── Llista de textos ────────────────────────────────
     async function loadTexts(level) {
@@ -442,10 +494,15 @@
       }
       if (!text) return;
 
+      obreDictat(text);
+    }
+
+    /** Munta la pantalla de dictat per a un text, vingui d'on vingui. */
+    function obreDictat(text) {
       state.selectedText = text;
       state.photoFile = null;
       $('m-dictation-title').textContent = text.title;
-      $('m-level-badge').textContent = LEVEL_LABELS[state.level];
+      $('m-level-badge').textContent = LEVEL_LABELS[state.level] || 'Repàs';
       if (window.A11y) window.A11y.progres($('m-progress-bar'), 0);
       else $('m-progress-bar').style.width = '0%';
       $('m-phrase-indicator').textContent = '';
@@ -587,10 +644,18 @@
     async function corregeixText() {
       comencaCorreccio('Corregint el dictat…');
       try {
-        const res = await fetch('/api/correct', {
+        // El repàs té ruta pròpia: a més de corregir, mou cada frase al seu
+        // esglaó. Les frases hi van perquè el servidor sàpiga quines eren.
+        const esRepas = state.selectedText.id === 'repas';
+        const res = await fetch(esRepas ? '/api/repesca/correct' : '/api/correct', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
+          body: JSON.stringify(esRepas ? {
+            originalText: state.selectedText.text,
+            userText: $('m-user-text').value.trim(),
+            frases: state.selectedText.frases,
+            punctuationDictated: state.dictaPuntuacio,
+          } : {
             originalText: state.selectedText.text,
             userText: $('m-user-text').value.trim(),
             level: state.level,

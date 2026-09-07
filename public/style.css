@@ -905,3 +905,11 @@ select:focus-visible,
    deixat a mitges. */
 .error-item.error-omeses .error-type { color: var(--text-muted); background: var(--bg); }
 .error-item.error-omeses .wrong { color: var(--text-muted); text-decoration: none; }
+
+/* ── El repàs de les frases fallades (F27) ──────
+   Va amb el blau del tema i no en vermell: repassar no és una penalització. */
+.repas-card { border-color: var(--primary); }
+.repas-cos { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+.repas-cos > div { flex: 1; min-width: 180px; }
+.repas-titol { font-weight: 600; font-size: 0.9375rem; }
+.repas-nota { font-size: 0.8125rem; color: var(--text-muted); margin-top: 2px; }

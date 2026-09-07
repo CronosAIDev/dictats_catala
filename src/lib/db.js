@@ -79,6 +79,29 @@ db.exec(`
     created_at TEXT DEFAULT (datetime('now'))
   );
 
+  -- Les frases que has fallat tornen (F27).
+  --
+  -- Una fila per frase i persona, no per fallada: si la tornes a fallar es
+  -- reaprofita la que hi ha i torna a baix de tot. Quan l'encertes tres
+  -- vegades seguides (1, 3 i 7 dies) la fila s'esborra: ja no torna.
+  --
+  -- text_id + frase apunten al banc (b3, frase 2) o a un text personal
+  -- (personal_7); el text de la frase NO es desa, es torna a treure d'allà.
+  -- Desar-lo voldria dir que editar un text personal deixaria repassos
+  -- apuntant a una frase que ja no existeix.
+  CREATE TABLE IF NOT EXISTS repesca (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    email TEXT NOT NULL,
+    text_id TEXT NOT NULL,
+    frase INTEGER NOT NULL,
+    passada INTEGER NOT NULL DEFAULT 0,   -- vegades seguides encertada
+    toca_el TEXT NOT NULL,                -- data local 'YYYY-MM-DD'
+    fallades INTEGER NOT NULL DEFAULT 1,
+    creada TEXT DEFAULT (datetime('now')),
+    UNIQUE (email, text_id, frase)
+  );
+  CREATE INDEX IF NOT EXISTS idx_repesca_toca ON repesca (email, toca_el);
+
   CREATE INDEX IF NOT EXISTS idx_user_errors_email ON user_errors (email, created_at);
   CREATE INDEX IF NOT EXISTS idx_user_errors_type  ON user_errors (email, type);
   CREATE INDEX IF NOT EXISTS idx_user_progress_email ON user_progress (email, completed_at);
