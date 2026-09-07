@@ -102,6 +102,20 @@ db.exec(`
   );
   CREATE INDEX IF NOT EXISTS idx_repesca_toca ON repesca (email, toca_el);
 
+  -- Quantes targetes has fet cada dia (F28).
+  --
+  -- Una fila per dia i persona, no per targeta: el detall de cada resposta no
+  -- serveix per a res que no sàpiga ja user_errors, i desar-lo seria guardar
+  -- més del que fa falta. Això només ha de contestar «quantes n'has fet avui»,
+  -- que és el que dona sentit a l'objectiu diari de F34.
+  CREATE TABLE IF NOT EXISTS micro_dies (
+    email TEXT NOT NULL,
+    dia TEXT NOT NULL,               -- data local 'YYYY-MM-DD'
+    targetes INTEGER NOT NULL DEFAULT 0,
+    encerts INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (email, dia)
+  );
+
   CREATE INDEX IF NOT EXISTS idx_user_errors_email ON user_errors (email, created_at);
   CREATE INDEX IF NOT EXISTS idx_user_errors_type  ON user_errors (email, type);
   CREATE INDEX IF NOT EXISTS idx_user_progress_email ON user_progress (email, completed_at);

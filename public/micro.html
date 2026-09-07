@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="ca">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>60 segons — Dictats en Català</title>
+  <link rel="stylesheet" href="/style.css">
+  <meta name="theme-color" content="#2563eb">
+  <link rel="icon" href="/icons/icon-192.png">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Dictats">
+  <script src="/a11y.js" defer></script>
+  <script src="/pwa.js" defer></script>
+</head>
+<body>
+  <div class="app-shell">
+    <header class="app-header">
+      <div class="logo">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <path d="M12 20h9M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/>
+        </svg>
+        Dictats en Català
+      </div>
+      <div class="user-info">
+        <a href="/mobile" class="btn btn-ghost btn-sm" id="btn-sortir-micro">← Tornar</a>
+      </div>
+    </header>
+
+    <main class="app-main">
+      <h2 style="font-size:1.25rem;font-weight:600;margin-bottom:6px;letter-spacing:-.02em">60 segons</h2>
+      <p class="corba-nota" style="margin:0 0 20px">Quina de les dues és la bona?</p>
+
+      <div id="micro-carregant" style="text-align:center;padding:48px;color:var(--text-muted)">
+        <div class="spinner" style="margin:0 auto 12px"></div>
+        Preparant les targetes…
+      </div>
+
+      <!-- Encara no hi ha errors de què fer targetes -->
+      <div class="card" id="micro-buit" style="display:none">
+        <div class="card-body">
+          <p style="margin:0 0 8px;font-weight:600">Encara no hi ha targetes</p>
+          <p class="corba-nota" style="margin:0">Es fan amb les paraules que has fallat als dictats.
+            Fes-ne un i torna.</p>
+          <a href="/mobile" class="btn btn-primary" style="margin-top:16px">Fer un dictat</a>
+        </div>
+      </div>
+
+      <!-- La targeta -->
+      <div id="micro-joc" style="display:none">
+        <div class="card">
+          <div class="card-body">
+            <div class="micro-cap">
+              <span class="error-type" id="micro-regla"></span>
+              <span class="corba-nota" id="micro-compte"></span>
+            </div>
+            <div class="micro-opcions" id="micro-opcions"></div>
+            <p class="micro-pista" id="micro-pista"></p>
+          </div>
+        </div>
+        <div class="micro-punts" id="micro-punts" role="status" aria-live="polite"></div>
+      </div>
+
+      <!-- El final -->
+      <div class="card" id="micro-final" style="display:none">
+        <div class="card-body" style="text-align:center">
+          <div class="scale-label scale-good" id="micro-resultat" style="font-size:1.5rem"></div>
+          <p class="corba-nota" id="micro-avui" style="margin:8px 0 0"></p>
+          <div style="display:flex;gap:8px;justify-content:center;margin-top:20px;flex-wrap:wrap">
+            <button class="btn btn-primary" id="micro-altra">Una altra tanda</button>
+            <a href="/mobile" class="btn btn-ghost">Tornar</a>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    const $ = id => document.getElementById(id);
+    function escapeHtml(str) {
+      return String(str ?? '')
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    }
+
+    // Tornar a d'on has vingut: des de l'escriptori, a l'escriptori.
+    const enrere = String(document.referrer || '').includes('/mobile') ? '/mobile' : '/';
+    document.querySelectorAll('a[href="/mobile"]').forEach(a => { a.href = enrere; });
+
+    let targetes = [];
+    let i = 0;
+    let respostes = [];
+
+    async function carrega() {
+      const res = await fetch('/api/micro');
+      if (res.status === 401) return (window.location.href = '/login');
+      const dades = await res.json();
+      $('micro-carregant').style.display = 'none';
+      targetes = dades.targetes || [];
+      i = 0;
+      respostes = [];
+      if (!targetes.length) { $('micro-buit').style.display = ''; return; }
+      $('micro-final').style.display = 'none';
+      $('micro-joc').style.display = '';
+      pinta();
+    }
+
+    function pinta() {
+      const t = targetes[i];
+      $('micro-regla').textContent = t.nom;
+      $('micro-compte').textContent = `${i + 1} de ${targetes.length}`;
+      $('micro-pista').textContent = '';
+      // La regla no es diu fins que has triat: si sortís abans, seria la
+      // resposta i no hauries de pensar-hi.
+      $('micro-opcions').innerHTML = t.opcions.map(o => `
+        <button class="micro-opcio" data-tria="${escapeHtml(o)}">${escapeHtml(o)}</button>
+      `).join('');
+      document.querySelectorAll('.micro-opcio').forEach(b => {
+        b.addEventListener('click', () => tria(b.dataset.tria));
+      });
+      $('micro-punts').textContent = '';
+    }
+
+    async function tria(quina) {
+      const t = targetes[i];
+      respostes.push({ id: t.id, tria: quina });
+      document.querySelectorAll('.micro-opcio').forEach(b => { b.disabled = true; });
+      // La correcció de cada targeta ve amb la de tota la tanda, al final: no
+      // hi ha manera de saber la resposta abans de contestar.
+      $('micro-pista').textContent = t.regla;
+      i += 1;
+      if (i < targetes.length) { setTimeout(pinta, 900); return; }
+      setTimeout(acaba, 700);
+    }
+
+    async function acaba() {
+      $('micro-joc').style.display = 'none';
+      const res = await fetch('/api/micro', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ respostes }),
+      });
+      if (res.status === 401) return (window.location.href = '/login');
+      const r = await res.json();
+      $('micro-resultat').textContent = r.text || '';
+      // El plural de «targeta» és «targetes», no «targetas»: en català no es
+      // fa afegint una s.
+      $('micro-avui').textContent = r.avui
+        ? `Avui portes ${r.avui.targetes} ${r.avui.targetes === 1 ? 'targeta' : 'targetes'}.` : '';
+      $('micro-final').style.display = '';
+      if (window.A11y) window.A11y.anuncia(r.text || '');
+    }
+
+    $('micro-altra').addEventListener('click', () => {
+      $('micro-final').style.display = 'none';
+      $('micro-carregant').style.display = '';
+      carrega();
+    });
+
+    carrega();
+  </script>
+</body>
+</html>
