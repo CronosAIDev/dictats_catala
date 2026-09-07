@@ -61,11 +61,19 @@ $ node scripts/assetlinks.js 79:CE:50:...:BC
 - [x] JDK 17 (`~/.bubblewrap/jdk`, instal·lat pel mateix Bubblewrap)
 - [x] Keystore generat i guardat fora del repo
 - [x] Empremta de pujada
-- [ ] Android SDK — Bubblewrap també se l'instal·la, falta acabar-ho
-- [ ] `bubblewrap init` sobre `https://dictation.generaive.io/manifest.webmanifest`
-- [ ] AAB signat
-- [ ] Provar-lo en un Android real fent un dictat sencer
+- [x] Android SDK (build-tools **36.1.0**, que és la que Bubblewrap 1.25 demana)
+- [x] Projecte TWA generat a `~/dictats-twa` des del `twa-manifest.json`
+- [x] **AAB signat**, i l'empremta del certificat és la d'aquí dalt
+- [x] Provat a l'emulador: s'obre, connecta amb producció i pinta el login
+- [ ] Un dictat sencer dins del TWA — fa falta un compte de producció
 - [ ] Pujar-lo, agafar la segona empremta i escriure l'`assetlinks.json` de debò
+
+Com es construeix i les quatre pedres del camí: [`TWA.md`](TWA.md).
+
+> ⚠️ **Si la contrasenya és dolenta, `apksigner` l'escriu sencera al missatge d'error.**
+> No la tapa. Va passar el 07-09 construint el primer AAB: la última línia del fitxer de
+> claus porta una etiqueta davant (`storepass i keypass: …`) i es va enviar sencera com a
+> contrasenya. Un motiu més perquè visqui en un gestor.
 
 **L'`applicationId` es congela al PUJAR el primer AAB, no al construir-lo.** Per això tot
 això d'aquí es pot fer amb la proposta `io.generaive.dictats` sense comprometre res: si
