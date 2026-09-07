@@ -332,12 +332,15 @@ function desa(email, correccio, { level, textId, textTitle }) {
 
     const progressId = resultat.lastInsertRowid;
     const insereix = db.prepare(`
-      INSERT INTO user_errors (progress_id, email, level, text_id, type, original, user_wrote, position, counted)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO user_errors (progress_id, email, level, text_id, type, original, user_wrote, position, counted, taxonomia)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
     const fila = (e, counted) => [
       progressId, email, level || 'unknown', textId || 'unknown',
       e.type, e.original, e.userWrote, e.position, counted,
+      // Ja neix classificada amb el catàleg d'avui: si no, la migració de
+      // `db.js` la tornaria a mirar a cada arrencada, per sempre.
+      taxonomia.VERSIO,
     ];
     // L'ordre d'aquestes files ÉS l'ordre de `errors.concat(warnings)`, i
     // `user_errors.id` és autoincremental: per això `ORDER BY id` el recupera

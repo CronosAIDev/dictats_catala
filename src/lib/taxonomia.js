@@ -81,6 +81,12 @@ const CATEGORIES = [
     regla: 'Aquesta paraula no era al dictat.' },
 ];
 
+// La versió del catàleg. Puja quan una parella de paraules passa a classificar-se
+// diferent, i és el que fa que la migració de `db.js` sàpiga quines files ha de
+// tornar a mirar. Les files noves ja neixen amb aquesta versió posada: si no, es
+// tornarien a classificar a CADA arrencada, per sempre.
+const VERSIO = 1;
+
 const PER_ID = new Map(CATEGORIES.map((c) => [c.id, c]));
 const regla = (id) => (PER_ID.get(id) || {}).regla || '';
 const nom = (id) => (PER_ID.get(id) || {}).nom || id;
@@ -241,4 +247,4 @@ function comptaPerA(paraules) {
   return n;
 }
 
-module.exports = { CATEGORIES, classifica, regla, nom, comptaPerA, DIACRITICS };
+module.exports = { CATEGORIES, VERSIO, classifica, regla, nom, comptaPerA, DIACRITICS };
