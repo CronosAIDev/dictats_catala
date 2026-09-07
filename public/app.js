@@ -105,9 +105,10 @@ async function init() {
 
   // Sortir del dictat el pausa. Abans es quedava sonant de fons i, en tornar,
   // s'havia de començar des de la primera frase.
-  $('btn-back-select').addEventListener('click', () => { motor.pausa(); showView('select'); });
+  $('btn-back-select').addEventListener('click', () => { motor.pausa(); tornaATriar(); });
   $('btn-back-dictation').addEventListener('click', () => showView('dictation'));
-  $('btn-new-dictation').addEventListener('click', () => { resetDictation(); showView('select'); });
+  $('btn-new-dictation').addEventListener('click', () => { resetDictation(); tornaATriar(); });
+  $('repas-boto').addEventListener('click', comencaRepas);
 
   $('btn-start-dictation').addEventListener('click', iniciaDictat);
   $('btn-repeat-phrase').addEventListener('click', () => motor.repeteix());
@@ -155,6 +156,7 @@ async function init() {
 
   comprovaVeu();
   await loadTextList('basic');
+  miraRepas();
 }
 
 function mostraVelocitat() {
@@ -310,15 +312,58 @@ async function selectText(id, isPersonal) {
     text = await res.json();
   }
   if (!text) return;
+  obreDictat(text);
+}
 
+/** Munta la pantalla de dictat per a un text, vingui d'on vingui. */
+function obreDictat(text) {
   state.selectedText = text;
   $('dictation-title').textContent = text.title;
-  $('dictation-level-badge').textContent = LEVEL_LABELS[state.level];
+  $('dictation-level-badge').textContent = LEVEL_LABELS[state.level] || 'Repàs';
   resetDictationUI();
   motor.carrega(text.text.split('||').map(s => s.trim()).filter(Boolean));
   $('user-text').value = recuperaEsborrany();
   updateCorrectBtn();
   showView('dictation');
+}
+
+// ── El repàs (F27) ────────────────────────────────────────
+// Es consulta cada vegada que es torna a la pantalla de tria: després d'un
+// dictat pot haver-hi frases noves per repassar.
+async function miraRepas() {
+  if (!window.Repas) return;
+  const sessio = await window.Repas.consulta();
+  state.repas = sessio;
+  const hi = sessio.pendents > 0;
+  $('repas-card').style.display = hi ? '' : 'none';
+  if (!hi) return;
+  $('repas-titol').textContent = window.Repas.etiqueta(sessio.pendents);
+  $('repas-nota').textContent = window.Repas.EXPLICACIO;
+}
+
+function comencaRepas() {
+  if (!state.repas || !state.repas.pendents) return;
+  state.nivellAbans = state.level;
+  state.level = 'repas';
+  obreDictat(window.Repas.comText(state.repas));
+}
+
+/**
+ * Torna a la pantalla de tria.
+ *
+ * Si veníem d'un repàs, `state.level` valia 'repas', que no és cap nivell de
+ * la llista: es torna a l'últim que sí que ho era.
+ */
+function tornaATriar() {
+  if (state.level === 'repas') {
+    state.level = state.nivellAbans || 'basic';
+    document.querySelectorAll('.level-card').forEach(c => {
+      c.classList.toggle('active', c.dataset.level === state.level);
+    });
+    loadTextList(state.level);
+  }
+  miraRepas();
+  showView('select');
 }
 
 // ── Textos personals ──────────────────────────────────────
@@ -477,10 +522,18 @@ async function submitCorrection() {
       return;
     } else {
       $('loading-msg').textContent = 'Corregint el dictat…';
-      const res = await fetch('/api/correct', {
+      // El repàs té ruta pròpia: a més de corregir, mou cada frase al seu
+      // esglaó. Les frases hi van perquè el servidor sàpiga quines eren.
+      const esRepas = state.selectedText.id === 'repas';
+      const res = await fetch(esRepas ? '/api/repesca/correct' : '/api/correct', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+        body: JSON.stringify(esRepas ? {
+          originalText: state.selectedText.text,
+          userText: $('user-text').value.trim(),
+          frases: state.selectedText.frases,
+          punctuationDictated: state.dictaPuntuacio,
+        } : {
           originalText: state.selectedText.text,
           userText: $('user-text').value.trim(),
           level: state.level,
