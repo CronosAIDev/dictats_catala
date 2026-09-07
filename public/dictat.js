@@ -45,6 +45,11 @@
     return dit.replace(/\s+/g, ' ').trim();
   }
 
+  /** Si el navegador té ALGUNA veu instal·lada, sigui de la llengua que sigui. */
+  function hiHaVeu() {
+    return !!(global.speechSynthesis && global.speechSynthesis.getVoices().length);
+  }
+
   function veusCatalanes() {
     if (!global.speechSynthesis) return [];
     return global.speechSynthesis.getVoices().filter(function (v) {
@@ -72,7 +77,7 @@
     this.onCanvi = onCanvi || function () {};
     this.frases = [];
     this.sonant = 0;        // la frase que sona ARA
-    this.estat = 'aturat';  // aturat | llegint | pausa | pausat | fet
+    this.estat = 'aturat';  // aturat | llegint | pausa | pausat | fet | sense-veu
     this.segons = 0;
     this.tic = null;
     this.torn = 0;          // per ignorar l'onend d'una veu ja cancel·lada
@@ -96,10 +101,28 @@
     if (this.tic) { clearInterval(this.tic); this.tic = null; }
   };
 
+  /**
+   * El dictat no pot sonar en aquest dispositiu.
+   *
+   * Fa falta un estat propi perquè, sense cap veu instal·lada, `speak()` no fa
+   * res i acaba a l'instant. Encadenant la frase següent, les cinc passaven en
+   * un sospir i **el dictat es donava per completat sense haver sonat mai**: la
+   * barra al 100 %, «Dictat completat» en verd, i cap so. Ho va veure en Gerard
+   * provant l'app en un Linux sense síntesi de veu.
+   *
+   * L'avís de F21 ja dic que no sonarà; el que faltava era que la màquina
+   * d'estats no digués el contrari.
+   */
+  MotorDictat.prototype._sensVeu = function () {
+    this._aturaTic();
+    this.estat = 'sense-veu';
+    this._avisa();
+  };
+
   MotorDictat.prototype._parla = function (text, quanAcabi) {
     var motor = this;
     var torn = ++this.torn;
-    if (!global.speechSynthesis) { quanAcabi(); return; }
+    if (!global.speechSynthesis || !hiHaVeu()) { this._sensVeu(); return; }
     // `pause()` marca el sintetitzador sencer, no una locució, i `cancel()` NO
     // el desmarca. Sense aquest `resume()`, qualsevol dictat que s'hagi pausat
     // un cop es queda mut per sempre: la veu no sona, `onend` no arriba mai i
@@ -114,7 +137,12 @@
     // Si mentrestant s'ha saltat o aturat, aquest onend ja no mana.
     var fi = function () { if (torn === motor.torn) quanAcabi(); };
     utter.onend = fi;
-    utter.onerror = fi;
+    // Si falla i resulta que no hi ha cap veu, no s'encadena res: es diu.
+    utter.onerror = function () {
+      if (torn !== motor.torn) return;
+      if (!hiHaVeu()) return motor._sensVeu();
+      quanAcabi();
+    };
     global.speechSynthesis.speak(utter);
   };
 
@@ -265,6 +293,7 @@
   global.Dictat = {
     MotorDictat: MotorDictat,
     veusCatalanes: veusCatalanes,
+    hiHaVeu: hiHaVeu,
     ambPuntuacio: ambPuntuacio,
     pausaDeFrase: pausaDeFrase,
     VELOCITAT_PER_DEFECTE: VELOCITAT_PER_DEFECTE,

@@ -15,6 +15,7 @@
   <meta name="apple-mobile-web-app-title" content="Dictats">
   <script src="/a11y.js" defer></script>
   <script src="/textos.js" defer></script>
+  <script src="/errors.js" defer></script>
   <script src="/rang.js" defer></script>
   <script src="/explicacions.js" defer></script>
   <script src="/anim.js" defer></script>
@@ -523,6 +524,11 @@
         $('m-phrase-indicator').textContent = 'Dictat completat';
         $('m-status-badge').innerHTML = '<span class="speaking-badge" style="background:var(--success-light);color:var(--success)">✓ Completat</span>';
         $('m-controls').style.display = 'none';
+      } else if (info.estat === 'sense-veu') {
+        // Sense cap veu el dictat no ha sonat: dir que està completat seria mentida.
+        $('m-phrase-indicator').textContent = 'El dictat no ha pogut sonar.';
+        $('m-status-badge').innerHTML = '<span class="speaking-badge" style="background:var(--warning-light);color:var(--warning)">Sense veu</span>';
+        $('m-controls').style.display = 'none';
       }
       actualitzaBotoCorregir();
     }
@@ -664,6 +670,26 @@
     // personal sense espais al voltant de `||` desplaçava totes les marques.
     function textNet() {
       return state.selectedText.text.replace(/\|\|/g, ' ').replace(/\s+/g, ' ').trim();
+    }
+
+    // Vegeu `public/errors.js`: divuit paraules no escrites són una sola cosa
+    // que ha passat, no divuit errors per llegir un a un.
+    function fitxaOmeses(tros) {
+      const t = window.Errors.textOmeses(tros);
+      return `
+        <div class="error-item error-omeses">
+          <span class="error-type">${escapeHtml(t.tipus)}</span>
+          <div class="error-detail">
+            <div class="error-words"><span class="wrong">${escapeHtml(t.paraules)}</span></div>
+            <div class="error-explanation"><span>${escapeHtml(t.explicacio)}</span></div>
+          </div>
+        </div>`;
+    }
+
+    function pintaErrors(llista) {
+      if (!window.Errors) return llista.map(fitxaError).join('');
+      return window.Errors.agrupa(llista)
+        .map(tros => (tros.omesa ? fitxaOmeses(tros) : fitxaError(tros.err))).join('');
     }
 
     function fitxaError(e) {
@@ -812,12 +838,12 @@
       $('m-user-marked').innerHTML = pintaElTeu(c, paraules);
 
       $('m-errors-section').innerHTML = errors.length
-        ? `<h3>Errors detectats</h3>${errors.map(fitxaError).join('')}`
+        ? `<h3>Errors detectats</h3>${pintaErrors(errors)}`
         : '';
 
       // La puntuació que no s'ha dictat es veu, però no puntua.
       $('m-warnings-section').innerHTML = warnings.length
-        ? `<h3>Puntuació — no compta</h3><p class="warnings-note">No s'ha dictat, així que no baixa la teva escala.</p>${warnings.map(fitxaError).join('')}`
+        ? `<h3>Puntuació — no compta</h3><p class="warnings-note">No s'ha dictat, així que no baixa la teva escala.</p>${pintaErrors(warnings)}`
         : '';
 
       $('m-feedback-box').innerHTML = escapeHtml(c.feedback || '')

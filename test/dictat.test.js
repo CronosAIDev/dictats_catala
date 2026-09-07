@@ -146,5 +146,32 @@ console.log('\nRegressió — l\'última frase acaba mentre està pausat:');
   comprova('progrés al 100 %', 100, caixa.info.progres);
 }
 
+console.log('\nSense cap veu instal·lada, el dictat NO es dona per fet:');
+{
+  // El cas d'en Gerard: un Linux sense síntesi de veu. Abans, `speak()` acabava
+  // a l'instant, les cinc frases passaven en un sospir i la pantalla deia
+  // «Dictat completat» amb la barra al 100 % sense haver sonat res.
+  const abans = veu.getVoices;
+  veu.getVoices = () => [];
+  const vist = [];
+  const motor = new Dictat.MotorDictat((info) => vist.push(info));
+  motor.carrega(['Una frase.', 'Una altra.', 'I una tercera.']);
+  const ditsAbans = dit.length;
+  motor.inicia();
+  comprova('no arriba a dir res', ditsAbans, dit.length);
+  comprova('l\'estat ho diu', 'sense-veu', motor.estat);
+  comprova('i no diu «fet» enlloc', false, vist.some(i => i.estat === 'fet'));
+  comprova('el progrés es queda a zero, no al 100 %', 0, vist[vist.length - 1].progres);
+  veu.getVoices = abans;
+}
+
+console.log('\nI amb veu, tot segueix igual:');
+{
+  const motor = new Dictat.MotorDictat(() => {});
+  motor.carrega(['Una frase.']);
+  motor.inicia();
+  comprova('arrenca llegint', 'llegint', motor.estat);
+}
+
 console.log(falles ? `\n${falles} FALLES` : '\nTotes les proves del motor passen');
 process.exitCode = falles ? 1 : 0;

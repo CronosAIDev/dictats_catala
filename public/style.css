@@ -899,3 +899,9 @@ select:focus-visible,
 .falla-barra-plena { height: 100%; background: var(--primary-hover); opacity: .7; border-radius: 999px; }
 .falla-regla { margin: 6px 0 0; font-size: 0.8125rem; color: var(--text-muted); }
 .falla-resta { margin: 12px 0 0; font-size: 0.8125rem; color: var(--text-muted); }
+
+/* La fitxa que resumeix una tirallonga de paraules no escrites. Va en gris i no
+   en vermell a posta: no és una falta d'ortografia, és que el dictat s'ha
+   deixat a mitges. */
+.error-item.error-omeses .error-type { color: var(--text-muted); background: var(--bg); }
+.error-item.error-omeses .wrong { color: var(--text-muted); text-decoration: none; }
