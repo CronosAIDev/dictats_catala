@@ -117,4 +117,40 @@ afegeixColumnaSiFalta('user_errors', 'generada', 'INTEGER NOT NULL DEFAULT 0');
 afegeixColumnaSiFalta('user_progress', 'feedback', 'TEXT');
 afegeixColumnaSiFalta('user_progress', 'feedback_generat', 'INTEGER NOT NULL DEFAULT 0');
 
+// Migració: les categories de F25.
+//
+// Els sis tipus d'abans descrivien una diferència, no una regla: «ortografia»
+// s'emportava la ela geminada, la ce trencada i la b/v, i «accentuació»
+// s'emportava els diacrítics i la dièresi.
+//
+// Com que `taxonomia.classifica` és una funció pura de (original, escrit), les
+// files que ja hi ha es poden tornar a classificar. **I s'ha de fer**: sense
+// això, F26 («on falles») diria «14 errors d'ortografia» de tot l'historial
+// anterior, que és precisament la resposta que no serveix.
+//
+// La columna `taxonomia` és el número de versió del catàleg; només es toquen
+// les files que en porten una d'anterior, així que passar-hi dues vegades no fa
+// res. El que NO es pot recuperar és `per/per a`: depèn de la paraula del
+// costat i les files no la desen.
+afegeixColumnaSiFalta('user_errors', 'taxonomia', 'INTEGER NOT NULL DEFAULT 0');
+
+const VERSIO_TAXONOMIA = 1;
+function reclassifica() {
+  const pendents = db.prepare(
+    'SELECT id, original, user_wrote FROM user_errors WHERE taxonomia < ?'
+  ).all(VERSIO_TAXONOMIA);
+  if (pendents.length === 0) return;
+
+  const taxonomia = require('./taxonomia');
+  const actualitza = db.prepare('UPDATE user_errors SET type = ?, taxonomia = ? WHERE id = ?');
+  const totes = db.transaction((files) => {
+    for (const f of files) {
+      actualitza.run(taxonomia.classifica(f.original, f.user_wrote), VERSIO_TAXONOMIA, f.id);
+    }
+  });
+  totes(pendents);
+  console.log(`Taxonomia F25: ${pendents.length} errors reclassificats.`);
+}
+reclassifica();
+
 module.exports = db;

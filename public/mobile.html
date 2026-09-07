@@ -669,7 +669,7 @@
     function fitxaError(e) {
       return `
         <div class="error-item">
-          <span class="error-type">${escapeHtml(e.type || 'error')}</span>
+          <span class="error-type">${escapeHtml(e.typeName || e.type || 'error')}</span>
           <div class="error-detail">
             <div class="error-words">
               <span class="wrong">${escapeHtml(e.userWrote || '(omès)')}</span>

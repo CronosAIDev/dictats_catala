@@ -25,7 +25,9 @@ const AP = String.fromCharCode(39);   // apòstrof recte, el que dona el teclat
 console.log('Classificació i posicions:');
 comprova('text idèntic, cap error', [], resum('El sol brilla i el cel és blau.', 'El sol brilla i el cel és blau.'));
 comprova('accent', [[3, 1, 'accentuació']], resum('Vaig fer un camí llarg', 'Vaig fer un cami llarg'));
-comprova('diacrític', [[1, 1, 'accentuació']], resum('El món és bonic', 'El mon és bonic'));
+// `món`/`mon` és un dels quinze diacrítics de la norma vigent, i des de F25 té
+// categoria pròpia: abans queia dins d'`accentuació`, junt amb qualsevol accent.
+comprova('diacrític', [[1, 1, 'diacrítics']], resum('El món és bonic', 'El mon és bonic'));
 comprova('majúscula', [[2, 1, 'majúscules']], resum('Vivim a Catalunya avui', 'Vivim a catalunya avui'));
 comprova('puntuació', [[1, 1, 'puntuació']], resum('Al nord, hi ha neu', 'Al nord hi ha neu'));
 comprova('paraula omesa', [[3, 1, 'paraula omesa']], resum('El gos és un animal fidel', 'El gos és animal fidel'));
@@ -33,12 +35,14 @@ comprova('paraula afegida (sense posició a l\'original)', [[null, 1, 'paraula a
   resum('El gos és fidel', 'El gos és molt fidel'));
 
 console.log('\nLa ce trencada no és un accent:');
-comprova('caça contra caca', [[1, 1, 'ortografia']], resum('La caça és antiga', 'La caca és antiga'));
+// I des de F25 tampoc és «ortografia»: és la seva pròpia regla.
+comprova('caça contra caca', [[1, 1, 'ç']], resum('La caça és antiga', 'La caca és antiga'));
 
 console.log('\nApostrofació — l\'error més freqüent, i compta com un de sol:');
 comprova('contracció desfeta', [[2, 1, 'apostrofació']],
   resum('Vaig a l' + AP + 'aigua clara', 'Vaig a la aigua clara'));
-comprova('pronom feble', [[2, 1, 'apostrofació']],
+// `s'` és el pronom feble `se`, no l'article: des de F25 és `pronoms febles`.
+comprova('pronom feble', [[2, 1, 'pronoms febles']],
   resum('Els castells s' + AP + 'aixequen avui', 'Els castells se aixequen avui'));
 comprova('a l\'inrevés, i abasta dues paraules de l\'original', [[2, 2, 'apostrofació']],
   resum('Vaig a la escola nova', 'Vaig a l' + AP + 'escola nova'));
@@ -66,7 +70,7 @@ comprova('i no s' + AP + 'inventa cap paraula de més', 0,
   compara('L' + AP + 'oli d' + AP + 'oliva és bo', 'El oli de oliva és bo')
     .errors.filter(e => e.type === 'paraula afegida').length);
 comprova('tres seguits tampoc es desmunten',
-  [[1, 1, 'apostrofació'], [2, 1, 'apostrofació'], [3, 1, 'apostrofació']],
+  [[1, 1, 'apostrofació'], [2, 1, 'apostrofació'], [3, 1, 'pronoms febles']],
   resum('Beu l' + AP + 'aigua d' + AP + 'aquí s' + AP + 'ha dit', 'Beu la aigua de aquí se ha dit'));
 comprova('un de bé enmig de dos de malament no es toca',
   [[0, 1, 'apostrofació'], [2, 1, 'apostrofació']],
@@ -78,8 +82,10 @@ comprova('dues paraules afegides de debò no es fusionen',
 
 console.log('\nFrase real del banc, amb sis errors:');
 comprova('posicions exactes',
-  [[1, 1, 'ortografia'], [2, 1, 'accentuació'], [4, 1, 'ortografia'],
-   [6, 1, 'apostrofació'], [9, 1, 'ortografia']],
+  // Cinc errors i cinc regles diferents, que és el que F25 havia de permetre
+  // dir: abans eren tres `ortografia`, un `accentuació` i un `apostrofació`.
+  [[1, 1, 'ortografia'], [2, 1, 'diacrítics'], [4, 1, 'h'],
+   [6, 1, 'pronoms febles'], [9, 1, 'essa sorda i sonora']],
   resum('Els castells són torres humanes que s' + AP + 'aixequen a les places dels pobles.',
         'Els castels son torres umanes que se aixequen a les plases dels pobles.'));
 

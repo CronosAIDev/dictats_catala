@@ -57,27 +57,35 @@ Els altres dos queden pendents.
 
 ## Resultat d'avui
 
-150 casos, 790 errors injectats (`node scripts/benchmark/puntua.js`):
+160 casos, 850 errors injectats (`npm run benchmark`):
 
 ```
-diacritic         156/156  100.0%   accentuació
-ela-geminada       11/11   100.0%   ortografia
-apostrofacio      152/152  100.0%   apostrofació
-pronoms-febles     34/34   100.0%   apostrofació
-dieresi            14/14   100.0%   accentuació
-ce-trencada        34/34   100.0%   ortografia
-b-v                27/27   100.0%   ortografia
-accent-general    362/362  100.0%   accentuació
-TOTAL             790/790  100.0%
-falsos positius     4/794    0.5%
+Classe               Injectats  Trobats  Recall   Tipus que hi posa el corrector
+diacritic                  158      158  100.0%   diacrítics (158)
+ela-geminada                22       22  100.0%   ela geminada (22)
+apostrofacio               155      155  100.0%   apostrofació (155)
+pronoms-febles              37       37  100.0%   pronoms febles (37)
+dieresi                     23       23  100.0%   dièresi (23)
+ce-trencada                 43       43  100.0%   ç (43)
+b-v                         40       40  100.0%   b/v (40)
+accent-general             372      372  100.0%   accentuació (327), diacrítics (39), dièresi (6)
+TOTAL                      850      850  100.0%
+falsos positius              0      0.0%
 ```
 
-**Recall del 100 % a les vuit classes.** El corrector no se'n deixa cap.
+**Recall del 100 % a les vuit classes i cap fals positiu.** Els quatre que hi havia van
+desaparèixer en arreglar la finestra de veïnatge de `ajuntaApostrofs` (veure més avall).
 
-Els tipus que hi posa són els sis de sempre: `ela-geminada`, `ce-trencada` i `b-v` cauen
-totes tres dins d'`ortografia`, i `dieresi` dins d'`accentuació`. No és un error —
-la taxonomia fina és F25— però vol dir que **avui l'app no pot dir «se t'escapa la ela
-geminada»**, que és el que voldria un docent.
+### La taxonomia fina ja hi és (F25)
+
+Fins al 07-09 la columna de la dreta deia `ortografia` per a la ela geminada, la ce trencada
+i la b/v, i `accentuació` per als diacrítics i la dièresi. **Ara set de les vuit classes van
+a una categoria pròpia**, que és el que fa possibles F26, F27 i F28.
+
+La vuitena, `accent-general`, es reparteix — i no és cap error del corrector, sinó de
+l'etiqueta del banc: aquella regla agafa **qualsevol** paraula accentuada, així que hi
+entren `món` (que és un diacrític) i `raïm` (que és dièresi). El classificador és més
+precís que la classe amb què s'han injectat.
 
 ### Dues coses que el banc ha destapat
 
@@ -86,6 +94,12 @@ geminada»**, que és el que voldria un docent.
 l'`el` de l'alumne s'ancorava amb l'`el` que ja hi havia a l'original. Arreglat a
 `ajuntaApostrofs()`, amb regressió a `test/diff.test.js`. Els falsos positius van baixar de
 14 a 4.
+
+**Un tercer, destapat per F25.** La finestra de veïnatge de `ajuntaApostrofs` (±2 posicions)
+ajuntava trams que no tenien res a veure i els reaparellava per ordre: amb «per a estudiar
+català» escrit «per estudiar catala» sortia que l'alumne havia escrit «catala» en comptes
+d'«a» i que s'havia deixat «català». Ara una tanda sense cap apòstrof no es toca, i els
+falsos positius han passat de 4 a **0**.
 
 **Un que queda (F57).** Dos apòstrofs seguits — `L'oli d'oliva` escrit `El oli de oliva` —
 encara es desmunten: els sis errors es troben, però se'n reporten dos de més i el text que

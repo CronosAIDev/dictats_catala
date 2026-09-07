@@ -16,36 +16,8 @@
 // respongui. Si Claude falla, el dictat es corregeix igual i el que es perd
 // són les explicacions, no la correcció.
 
-const VORA = '«»“”‘’()[]{}¡!¿?.,;:…—–\'"';
-const RE_VORA = new RegExp(
-  `^[${VORA.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}]+|[${VORA.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}]+$`,
-  'g',
-);
-
-function treuPuntuacio(paraula) {
-  return paraula.replace(RE_VORA, '');
-}
-
-// Treu els diacrítics combinats, però NO la cedilla (U+0327): `caça` contra
-// `caca` no és un error d'accentuació, és un altre error, i barrejar-los
-// enganya justament a qui està practicant.
-const CEDILLA = 0x327;
-function treuAccents(paraula) {
-  let net = '';
-  for (const car of paraula.normalize('NFD')) {
-    const codi = car.codePointAt(0);
-    if (codi >= 0x300 && codi <= 0x36f && codi !== CEDILLA) continue;
-    net += car;
-  }
-  return net.normalize('NFC');
-}
-
-// Clau d'aparellament: prou laxa perquè `camí` i `cami` s'ancorin com la
-// mateixa paraula i el diff les vegi com una substitució, no com una paraula
-// omesa més una d'afegida.
-function clau(paraula) {
-  return treuAccents(treuPuntuacio(paraula)).toLowerCase();
-}
+const { treuPuntuacio, treuAccents, clau, distancia } = require('./paraules');
+const taxonomia = require('./taxonomia');
 
 function tokenitza(text) {
   return String(text || '')
@@ -54,25 +26,6 @@ function tokenitza(text) {
     .trim()
     .split(' ')
     .filter(Boolean);
-}
-
-function distancia(a, b) {
-  const m = a.length, n = b.length;
-  if (!m) return n;
-  if (!n) return m;
-  let anterior = Array.from({ length: n + 1 }, (_, j) => j);
-  for (let i = 1; i <= m; i++) {
-    const actual = [i];
-    for (let j = 1; j <= n; j++) {
-      actual[j] = Math.min(
-        anterior[j] + 1,
-        actual[j - 1] + 1,
-        anterior[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1),
-      );
-    }
-    anterior = actual;
-  }
-  return anterior[n];
 }
 
 // Parelles d'índexs (i,j) de les paraules que coincideixen, en ordre.
@@ -166,6 +119,27 @@ function ajuntaApostrofs(diferencies) {
       fi++;
     }
 
+    // Si a la tanda no hi ha cap apòstrof, no hi ha res a fusionar: es deixen
+    // les diferències tal com estaven.
+    //
+    // Sense aquesta comprovació, la finestra de veïnatge (±2) ajuntava trams
+    // que no tenien res a veure i els tornava a aparellar per ordre. Amb
+    // «per a estudiar català» escrit «per estudiar catala», l'`a` que falta i
+    // el `català` sense accent queien a la mateixa tanda i sortia que l'alumne
+    // havia escrit «catala» en comptes d'«a» i que s'havia deixat «català»:
+    // dos errors inventats en lloc dels dos de veritat. Ho va destapar F25,
+    // buscant el cas de `per`/`per a`.
+    let hiHaApostrof = false;
+    for (let m = k; m < fi && !hiHaApostrof; m++) {
+      const d = diferencies[m];
+      hiHaApostrof = APOSTROFS.test(d.original || '') || APOSTROFS.test(d.escrit || '');
+    }
+    if (!hiHaApostrof) {
+      for (let m = k; m < fi; m++) fusionades.push(diferencies[m]);
+      k = fi;
+      continue;
+    }
+
     // Les paraules de la tanda, en l'ordre del text: `buida` emet cada tram
     // amb les substitucions primer i les sobrants després, totes dues llistes
     // en ordre, així que reagafar-les deixa cada banda ben ordenada.
@@ -237,23 +211,9 @@ function ajuntaApostrofs(diferencies) {
   return fusionades;
 }
 
-// Els tipus són els sis de sempre més `majúscules`, que abans queia dins
-// d'`ortografia` i és una altra cosa. La taxonomia de debò —apostrofació,
-// diacrítics, ela geminada, pronoms febles…— és F25.
-function classifica(original, escrit) {
-  if (escrit === null) return 'paraula omesa';
-  if (original === null) return 'paraula afegida';
-
-  const o = treuPuntuacio(original);
-  const e = treuPuntuacio(escrit);
-  if (o === e) return 'puntuació';
-  if (/['\u2019]/.test(o) && !/['\u2019]/.test(e)) return 'apostrofació';
-  if (!/['\u2019]/.test(o) && /['\u2019]/.test(e)) return 'apostrofació';
-  if (o.toLowerCase() === e.toLowerCase()) return 'majúscules';
-  if (treuAccents(o).toLowerCase() === treuAccents(e).toLowerCase()) return 'accentuació';
-  if (distancia(o.toLowerCase(), e.toLowerCase()) <= 2) return 'ortografia';
-  return 'paraula incorrecta';
-}
+// Quina regla s'ha vulnerat ho decideix `taxonomia.js` (F25). Aquí només es
+// compara i es posiciona; allà es diu de què és l'error.
+const classifica = taxonomia.classifica;
 
 /**
  * Compara el text original amb el de l'alumne.
@@ -264,14 +224,22 @@ function classifica(original, escrit) {
 function compara(textOriginal, textAlumne) {
   const paraules = tokenitza(textOriginal);
   const escrites = tokenitza(textAlumne);
+  // `mesPerA` és l'única manera que hi ha de veure un «per a» que l'alumne ha
+  // afegit: el diff no guarda l'índex de les paraules de més, i posar-l'hi
+  // voldria dir tocar l'alineació que va arreglar F57.
+  const mesPerA = taxonomia.comptaPerA(escrites) > taxonomia.comptaPerA(paraules);
   const errors = ajuntaApostrofs(alinea(paraules, escrites)).map((d) => ({
     position: d.pos,
     span: d.abasta || 1,
     original: d.original,
     userWrote: d.escrit,
-    type: classifica(d.original, d.escrit),
+    type: classifica(d.original, d.escrit, { paraules, pos: d.pos, mesPerA }),
+    // El nom que es veu a la pantalla. L'id és estable i va a la base de dades;
+    // el nom pot canviar de redacció sense trencar cap consulta de F26.
+    typeName: '',
     explanation: '',
   }));
+  for (const e of errors) e.typeName = taxonomia.nom(e.type);
   return { paraules, escrites, errors };
 }
 

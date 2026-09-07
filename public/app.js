@@ -538,7 +538,7 @@ function renderSenseCorreccio() {
 function fitxaError(err) {
   return `
     <div class="error-item">
-      <span class="error-type">${escapeHtml(err.type || 'error')}</span>
+      <span class="error-type">${escapeHtml(err.typeName || err.type || 'error')}</span>
       <div class="error-detail">
         <div class="error-words">
           <span class="wrong">${escapeHtml(err.userWrote || '(omès)')}</span>
