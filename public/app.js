@@ -404,6 +404,13 @@ function pintaEstat(info) {
     $('status-badge').innerHTML = '<span class="speaking-badge" style="background:var(--success-light);color:var(--success)">✓ Dictat completat</span>';
     ['btn-repeat-phrase', 'btn-pause-dictation', 'btn-next-phrase', 'btn-extend-pause']
       .forEach(id => { $(id).style.display = 'none'; });
+  } else if (info.estat === 'sense-veu') {
+    // Sense cap veu, el dictat no ha sonat: no es pot dir que estigui fet.
+    // L'avís de F21 explica com instal·lar-ne una.
+    $('phrase-indicator').textContent = 'El dictat no ha pogut sonar en aquest dispositiu.';
+    $('status-badge').innerHTML = '<span class="speaking-badge" style="background:var(--warning-light);color:var(--warning)">Sense veu</span>';
+    ['btn-repeat-phrase', 'btn-pause-dictation', 'btn-next-phrase', 'btn-extend-pause']
+      .forEach(id => { $(id).style.display = 'none'; });
   }
 
   updateCorrectBtn();
@@ -533,6 +540,26 @@ function renderSenseCorreccio() {
   $('rank-block').style.display = 'none';
   $('original-marked').innerHTML = textNet().split(/\s+/).map(w => `<span class="word-ok">${escapeHtml(w)}</span>`).join(' ');
   $('user-marked-block').style.display = 'none'; // sense correcció no hi ha text de l'alumne
+}
+
+// Una tirallonga de paraules no escrites es diu en una fitxa, no en vint
+// (veure `public/errors.js`). El compte d'errors NO es toca.
+function fitxaOmeses(tros) {
+  const t = window.Errors.textOmeses(tros);
+  return `
+    <div class="error-item error-omeses">
+      <span class="error-type">${escapeHtml(t.tipus)}</span>
+      <div class="error-detail">
+        <div class="error-words"><span class="wrong">${escapeHtml(t.paraules)}</span></div>
+        <div class="error-explanation"><span>${escapeHtml(t.explicacio)}</span></div>
+      </div>
+    </div>`;
+}
+
+function pintaErrors(llista) {
+  if (!window.Errors) return llista.map(fitxaError).join('');
+  return window.Errors.agrupa(llista)
+    .map(tros => (tros.omesa ? fitxaOmeses(tros) : fitxaError(tros.err))).join('');
 }
 
 function fitxaError(err) {
@@ -675,11 +702,11 @@ function renderResults(correction) {
   $('user-marked').innerHTML = pintaElTeu(correction, paraules);
 
   $('errors-section').style.display = errors.length ? '' : 'none';
-  if (errors.length) $('errors-list-items').innerHTML = errors.map(fitxaError).join('');
+  if (errors.length) $('errors-list-items').innerHTML = pintaErrors(errors);
 
   // La puntuació que no s'ha dictat es veu, però no puntua.
   $('warnings-section').style.display = warnings.length ? '' : 'none';
-  if (warnings.length) $('warnings-list-items').innerHTML = warnings.map(fitxaError).join('');
+  if (warnings.length) $('warnings-list-items').innerHTML = pintaErrors(warnings);
 
   // El missatge final també l'escriu el model quan l'API respon, així que
   // també ha de tenir la seva via d'avís (F64).

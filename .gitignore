@@ -1,5 +1,5 @@
 node_modules/
-data/dictats.db
+data/*.db
 .env
 *.db-shm
 *.db-wal
