@@ -18,6 +18,10 @@
 //
 // El que NO mesura: contrast d'elements gràfics que no són text (la vora d'un
 // camp, el farciment d'una barra). També és AA a 3:1 i s'ha de mirar a part.
+// Les barres del gràfic de F36 estan mesurades a mà —3,57:1— i documentades a
+// `public/grafic.js`; la resta segueix pendent.
+//
+// El text DINS d'un SVG sí que hi entra: es llegeix `fill`, no `color`.
 
 const puppeteer = require('puppeteer-core');
 
@@ -68,7 +72,11 @@ async function mesura(page, nom) {
       if (e.display === 'none' || e.visibility === 'hidden' || Number(e.opacity) === 0) continue;
       if (!el.getClientRects().length) continue;
 
-      const davant = rgb(e.color);
+      // Dins d'un SVG el color del text és 'fill', no 'color'. Llegint
+      // 'color' es mesurava un color heretat que no es pinta enlloc, i les
+      // etiquetes dels eixos del gràfic de F36 s'escapaven senceres.
+      const dinsSvg = el.ownerSVGElement !== null && el.ownerSVGElement !== undefined;
+      const davant = rgb(dinsSvg ? e.fill : e.color);
       if (!davant || davant.alfa === 0) continue;
       const darrere = fonsDe(el);
       const r = ratio(davant.color, darrere);

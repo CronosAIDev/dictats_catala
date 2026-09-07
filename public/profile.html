@@ -15,6 +15,7 @@
   <meta name="apple-mobile-web-app-title" content="Dictats">
   <script src="/a11y.js" defer></script>
   <script src="/rang.js" defer></script>
+  <script src="/grafic.js" defer></script>
   <script src="/pwa.js" defer></script>
 </head>
 <body>
@@ -63,6 +64,20 @@
 
         <!-- Stats -->
         <div class="stats-grid" id="stats-grid"></div>
+
+        <!-- Corba de progrés (F36) -->
+        <div class="card" id="corba-card" style="margin-bottom:20px;display:none">
+          <div class="card-header">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 17l6-6 4 4 8-8"/></svg>
+            <span class="card-title">Errors per 100 paraules</span>
+            <span class="corba-nota" style="margin-left:auto">menys és millor</span>
+          </div>
+          <div class="card-body">
+            <div id="corba"></div>
+            <div id="corba-text" class="corba-millora"></div>
+            <p id="corba-avis" class="corba-nota" style="margin-top:10px;display:none"></p>
+          </div>
+        </div>
 
         <!-- History -->
         <div class="card">
@@ -135,6 +150,9 @@
         return r.dies === 1 ? 'Dia seguit' : 'Dies seguits';
       };
 
+      // Els decimals es diuen amb coma, que és com s'escriuen en català.
+      const coma = n => String(n).replace('.', ',');
+
       const scaleForAvg = errCount => {
         if (errCount === 0) return 'Excel·lent';
         if (errCount <= 2) return 'Molt bé';
@@ -153,11 +171,15 @@
           <div class="stat-label">Millor resultat (errors)</div>
         </div>
         <div class="stat-card">
-          <div class="stat-number">${data.stats.avgErrors}</div>
+          <div class="stat-number">${coma(data.stats.avgErrors)}</div>
           <div class="stat-label">Mitjana d'errors</div>
         </div>
         <div class="stat-card">
-          <div class="stat-number" style="font-size:1.25rem">${scaleForAvg(data.stats.avgErrors)}</div>
+          <div class="stat-number">${data.stats.errorsPer100 === null ? '—' : coma(data.stats.errorsPer100)}</div>
+          <div class="stat-label">Errors per 100 paraules</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-number" style="font-size:1.25rem">${scaleForAvg(Math.round(data.stats.avgErrors))}</div>
           <div class="stat-label">Nivell general</div>
         </div>
         <div class="stat-card">
@@ -165,6 +187,29 @@
           <div class="stat-label">${ratxaText(data.stats.ratxa)}</div>
         </div>
       `;
+
+      // La corba (F36). Només es pinta si hi ha alguna setmana amb dades
+      // comparables: un gràfic buit no informa de res i ocupa mitja pantalla.
+      const corba = window.Grafic ? window.Grafic.setmanes(data.setmanes) : '';
+      if (corba) {
+        document.getElementById('corba-card').style.display = '';
+        document.getElementById('corba').innerHTML = corba;
+        // La tendència només parla quan ha anat a millor (mai renyar). Quan no,
+        // la corba ja ensenya els nombres: no s'amaga res, no s'hi posa text.
+        document.getElementById('corba-text').textContent =
+          (data.tendencia && data.tendencia.text) || '';
+
+        // Si part de l'historial no sap quantes paraules tenia, es diu. És
+        // preferible a ensenyar una xifra que sembla de tot i no ho és.
+        const fora = data.stats.total - data.stats.dictatsComptats;
+        if (fora > 0) {
+          const avis = document.getElementById('corba-avis');
+          avis.style.display = '';
+          avis.textContent = fora === 1
+            ? 'Un dictat antic no va desar quantes paraules tenia i no entra en aquesta xifra.'
+            : `${fora} dictats antics no van desar quantes paraules tenien i no entren en aquesta xifra.`;
+        }
+      }
 
       // Historial amb dues pestanyes: Recents (per data) i Millors (per errors)
       const levelLabel = { basic:'Bàsic', intermedi:'Intermedi', avancat:'Avançat', personal:'Personal', unknown:'—' };

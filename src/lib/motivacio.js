@@ -109,4 +109,7 @@ function comparativa(errors, mitjanaAbans, totalAbans) {
   };
 }
 
-module.exports = { ratxa, fita, comparativa, FITES };
+// `dia` s'exporta perquè `progres.js` agrupi per setmana amb EXACTAMENT el
+// mateix criteri que la ratxa: un dictat fet a les 23:30 compta el dia que era
+// a Catalunya, no el següent. Escrit dues vegades, un dia divergiria.
+module.exports = { ratxa, fita, comparativa, dia, FITES };
