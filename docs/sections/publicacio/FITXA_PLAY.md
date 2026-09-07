@@ -206,17 +206,27 @@ buida. Cinc, en aquest ordre:
 | 4 | El dictat corrent, amb el compte enrere i els controls | Que es vegi que l'app t'espera a tu |
 | 5 | El perfil amb el progrés | Retenció |
 
-### ✅ Fetes (04-09), menys la de la foto
+### ✅ Fetes (refetes el 07-09), menys la de la foto
 
 Estan a `assets/captures/`, a **1080 × 1920**, que és la mida de telèfon que demana Play:
 
 | Fitxer | Què s'hi veu |
 |---|---|
-| `03-correccio.png` | **La correcció**: «Molt bé! · Quasi perfecte · 40 de 42 paraules · 2 errors», les paraules marcades, el rang i els punts guanyats |
-| `04-errors-classificats.png` | El teu text al costat del correcte, amb el tipus de cada error |
-| `05-perfil.png` | El perfil amb el rang i l'escala sencera dels vuit |
+| `01-nivells.png` | Els quatre nivells i el banc, **amb el que ja has fet marcat i un text proposat** (F35) |
 | `02-dictat.png` | El dictat amb els controls, la velocitat i «Paper i foto» |
-| `01-nivells.png` | Els quatre nivells i el banc de textos |
+| `03-correccio.png` | **La correcció**: «Molt bé! · Quasi perfecte · 40 de 42 paraules · 2 errors», les paraules marcades, el rang i els punts guanyats |
+| `04-errors-classificats.png` | El teu text al costat del correcte, **amb la regla de cada error i com es recorda** (F25) |
+| `05-perfil.png` | El perfil amb el rang i l'escala sencera dels vuit |
+| `06-progres.png` | Les xifres —errors per 100 paraules (F36)— i **«de què són els teus errors»** (F26) |
+
+> ⚠️ **Es refan cada vegada que canvia una pantalla.** Les del 04-09 van quedar velles en
+> quatre dies: la llista de textos, la correcció i el perfil són tots diferents des de
+> F25/F26/F35/F36. Una captura que ensenya una app que ja no existeix és pitjor que no
+> tenir-la.
+>
+> La `06` **no inclou la corba de F36** a posta: la sembra no toca cap data, així que tots
+> els dictats són d'avui i la corba surt amb una sola barra. Falsejar dates per a una
+> captura de botiga seria ensenyar el que no hi ha.
 
 **Com s'han fet**, perquè es puguin refer: `scripts/captures-play.js` amb Chrome, contra
 un servidor local i una **BD temporal**, amb l'historial sembrat fent correccions **reals
@@ -252,7 +262,7 @@ capçalera de 1024×500**, que **també existeix** des del rescat de `v12`:
 | Si la fitxa esmenta el C2 i com | Óscar |
 | Si els rangs entren al llançament (#23) | Óscar |
 | Validar les paraules clau amb dades reals | Play Console, un cop publicada |
-| ~~Fer les captures~~ | **Fetes el 04-09**, menys la de la foto (necessita el manuscrit de la #22) |
+| ~~Fer les captures~~ | **Refetes el 07-09** (6, no 5), menys la de la foto (necessita el manuscrit de la #22) |
 | ~~Gràfic de capçalera 1024×500~~ | **Fet**, `assets/grafic-capcalera-1024x500.png` |
 
 ## Fonts

@@ -69,7 +69,7 @@ const texts = {
     {
       id: 'i1',
       title: 'Les tradicions catalanes',
-      text: 'La Castanyada és una festa molt estimada a Catalunya. || Se celebra la nit del dia 31 d\'octubre. || La gent menja castanyes rostides i panellets. || Els panellets es fan amb marzipà i pinyons. || És una tradició que s\'ha mantingut al llarg dels segles.',
+      text: 'La Castanyada és una festa molt estimada a Catalunya. || Se celebra la nit del dia 31 d\'octubre. || La gent menja castanyes rostides i panellets. || Els panellets es fan amb massapà i pinyons. || És una tradició que s\'ha mantingut al llarg dels segles.',
       description: 'Festivitats i tradicions catalanes',
     },
     {
