@@ -110,6 +110,26 @@ const espera = ms => new Promise(r => setTimeout(r, ms));
   await espera(900);
   await fes('05-perfil');
 
+  // ── 5. El progrés ────────────────────────────────────────
+  // El capçal del perfil és el rang; el que ensenya que l'app ENTRENA i no
+  // només mesura són les xifres i «de què són els teus errors» (F26).
+  //
+  // Dues decisions d'enquadrament:
+  //  · Es descompta l'alçada del capçal enganxat, que si no tapa el títol de
+  //    la targeta.
+  //  · **No s'hi inclou la corba de F36.** La sembra fa correccions de veritat
+  //    i no toca cap data, així que tots els dictats són d'avui i la corba surt
+  //    amb una sola barra. Una barra no és una corba, i falsejar les dates per
+  //    a una captura de botiga seria ensenyar una app que no existeix.
+  await page.evaluate(() => {
+    const capcal = document.querySelector('.app-header');
+    const alt = capcal ? capcal.getBoundingClientRect().height : 0;
+    const dalt = document.getElementById('stats-grid');
+    if (dalt) window.scrollTo(0, dalt.getBoundingClientRect().top + window.scrollY - alt - 12);
+  });
+  await espera(500);
+  await fes('06-progres');
+
   console.log(`\nDictat fet servir: «${dictat.title}» amb ${ambErrors.fets} errors`);
   await browser.close();
 })().catch((e) => { console.error(e.message); process.exit(1); });
