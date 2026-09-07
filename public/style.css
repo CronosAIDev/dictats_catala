@@ -861,3 +861,16 @@ select:focus-visible,
 .mobile-text-item.es-seguent { border-color: var(--primary); background: var(--primary-light); }
 
 .text-list-resum { font-size: 0.8125rem; color: var(--text-muted); margin-left: 8px; }
+
+/* ── La corba de progrés (F36) ──────────────────
+   `--text-muted` sobre `--surface` va a 5,83:1 i `--success` a 5,02:1, tots dos
+   per sobre de l'AA. Mesurats amb `test/f39.contrast.js`, no triats a ull. */
+.corba-nota { font-size: 0.75rem; color: var(--text-muted); font-weight: 400; }
+.corba-millora:not(:empty) {
+  margin-top: 10px;
+  font-size: 0.8125rem;
+  color: var(--success);
+  background: var(--success-light);
+  border-radius: var(--radius);
+  padding: 8px 10px;
+}

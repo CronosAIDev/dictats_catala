@@ -9,6 +9,7 @@ const { compara } = require('../lib/diff');
 const rang = require('../lib/rang');
 const motivacio = require('../lib/motivacio');
 const textos = require('../lib/textos');
+const progres = require('../lib/progres');
 const texts = require('../../data/texts');
 
 const router = express.Router();
@@ -528,19 +529,38 @@ router.get('/profile', requireAuth, (req, res) => {
 
   // Les xifres surten de tot l'historial, no dels 50 que es pinten
   const agregats = db.prepare(`
-    SELECT COUNT(*) AS total, MIN(errors_count) AS best, AVG(errors_count) AS mitjana
+    SELECT COUNT(*) AS total, MIN(errors_count) AS best
     FROM user_progress WHERE email = ?
   `).get(email);
+
+  // La mitjana i la corba es calculen a `src/lib/progres.js` i no amb un AVG
+  // d'SQL, per dos motius: la taxa ha de pesar per paraules (no és la mitjana
+  // de les taxes) i els dictats sense `total_words` no hi poden entrar. Les
+  // files hi van senceres perquè la lògica sigui provable sense base de dades.
+  const files = db.prepare(`
+    SELECT errors_count, total_words, completed_at
+    FROM user_progress WHERE email = ?
+  `).all(email);
+  const xifres = progres.resum(files);
+  const corba = progres.setmanes(files);
 
   res.json({
     email,
     first_name: req.session.profile.first_name,
     stats: {
       total: agregats.total,
-      avgErrors: agregats.total ? Math.round(agregats.mitjana) : 0,
+      // Amb un decimal a posta (F36): arrodonida a enter, millorar de 2,6 a
+      // 2,4 no es veia.
+      avgErrors: xifres.mitjanaErrors ?? 0,
+      // Errors per 100 paraules, que és l'única xifra comparable entre un text
+      // de 34 paraules i un de 84. `null` si cap dictat sap quantes en tenia.
+      errorsPer100: xifres.taxa,
+      dictatsComptats: xifres.comptats,
       bestErrors: agregats.best ?? null,
       ratxa: ratxaDe(email),
     },
+    setmanes: corba,
+    tendencia: progres.tendencia(corba),
     rank: estatDeRang(email),
     ranks: rang.RANGS.map(r => ({ id: r.id, nom: r.nom, punts: r.punts, que: r.que })),
     history: recents,
