@@ -913,3 +913,29 @@ select:focus-visible,
 .repas-cos > div { flex: 1; min-width: 180px; }
 .repas-titol { font-weight: 600; font-size: 0.9375rem; }
 .repas-nota { font-size: 0.8125rem; color: var(--text-muted); margin-top: 2px; }
+
+/* ── Micro-exercicis de 60 segons (F28) ─────────
+   Els botons són grans a posta: es fan amb el dit i sense mirar gaire. */
+.micro-cap { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; }
+.micro-cap .corba-nota { margin-left: auto; }
+.micro-opcions { display: flex; flex-direction: column; gap: 12px; }
+.micro-opcio {
+  font-family: inherit;
+  font-size: 1.375rem;
+  font-weight: 600;
+  padding: 20px 16px;
+  border: 2px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+  transition: border-color .12s, background .12s;
+}
+.micro-opcio:hover:not(:disabled) { border-color: var(--primary); background: var(--primary-light); }
+.micro-opcio:disabled { cursor: default; opacity: .55; }
+.micro-pista:not(:empty) {
+  margin: 16px 0 0;
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+}
+.micro-entrada { display: block; text-align: center; text-decoration: none; }

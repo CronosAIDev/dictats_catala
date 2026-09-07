@@ -25,6 +25,7 @@
 // i `onfalles.js`: reben dades i no toquen la base.
 
 const { dia } = require('./motivacio');
+const { barrejaAmb } = require('./atzar');
 
 // Els dies que triga a tornar segons quantes vegades seguides l'has encertada.
 const DIES = [1, 3, 7];
@@ -87,18 +88,6 @@ function avanca(passada, encertada, avui = new Date()) {
   return { passada: seguent, tocaEl: data, apresa: data === null };
 }
 
-// Barreja determinista: la mateixa llavor dona sempre el mateix ordre, que és
-// el que permet provar-ho.
-function barrejaAmb(llista, llavor) {
-  const fora = llista.slice();
-  let estat = (llavor || 1) >>> 0;
-  for (let i = fora.length - 1; i > 0; i--) {
-    estat = (estat * 1664525 + 1013904223) >>> 0;   // congruencial lineal, prou
-    const j = estat % (i + 1);
-    const tmp = fora[i]; fora[i] = fora[j]; fora[j] = tmp;
-  }
-  return fora;
-}
 
 /**
  * Munta la sessió: les que toquen, més farciment, totes barrejades.

@@ -13,6 +13,8 @@ const progres = require('../lib/progres');
 const taxonomia = require('../lib/taxonomia');
 const onfalles = require('../lib/onfalles');
 const repesca = require('../lib/repesca');
+const micro = require('../lib/micro');
+const { treuPuntuacio } = require('../lib/paraules');
 const texts = require('../../data/texts');
 
 const router = express.Router();
@@ -696,6 +698,68 @@ router.post('/repesca/correct', requireAuth, limitaCorreccions, (req, res) => {
   respon(req, res, correccio, {
     level: 'repas', textId: 'repas', textTitle: 'Repàs', originalText,
   });
+});
+
+// ── Micro-exercicis de 60 segons (F28) ───────────────────────
+
+/** Quantes targetes has fet avui. */
+function microAvui(email) {
+  const f = db.prepare('SELECT targetes, encerts FROM micro_dies WHERE email = ? AND dia = ?')
+    .get(email, avui());
+  return { targetes: f ? f.targetes : 0, encerts: f ? f.encerts : 0 };
+}
+
+router.get('/micro', requireAuth, (req, res) => {
+  const email = req.session.profile.email;
+  // Es miren més errors dels que caben en una sessió perquè molts es
+  // descarten: omissions, paraules de més i puntuació no fan targeta.
+  const files = db.prepare(`
+    SELECT id, type, original, user_wrote
+    FROM user_errors
+    WHERE email = ? AND counted = 1 AND original IS NOT NULL AND user_wrote IS NOT NULL
+    ORDER BY id DESC
+    LIMIT 200
+  `).all(email);
+
+  // Llavor del dia: recarregar no rebaralla quina opció va primera.
+  const llavor = Number(avui().replace(/-/g, ''));
+  res.json({ targetes: micro.targetes(files, llavor), avui: microAvui(email) });
+});
+
+router.post('/micro', requireAuth, (req, res) => {
+  const email = req.session.profile.email;
+  const respostes = Array.isArray(req.body && req.body.respostes) ? req.body.respostes : null;
+  if (!respostes || !respostes.length) return res.status(400).json({ error: 'Falten respostes' });
+  if (respostes.length > micro.PER_SESSIO * 2) return res.status(400).json({ error: 'Massa respostes' });
+
+  // La resposta bona NO viatja mai al client abans de contestar: es comprova
+  // aquí contra la fila, que a més ha de ser d'aquesta persona.
+  const busca = db.prepare('SELECT id, type, original FROM user_errors WHERE id = ? AND email = ?');
+  const detall = [];
+  for (const r of respostes) {
+    const fila = busca.get(Number(r && r.id), email);
+    if (!fila) continue;
+    detall.push({
+      id: fila.id,
+      encertat: micro.encerta(fila.original, r.tria),
+      correcta: treuPuntuacio(fila.original),
+      regla: taxonomia.regla(fila.type),
+    });
+  }
+
+  const encerts = detall.filter((d) => d.encertat).length;
+  try {
+    db.prepare(`
+      INSERT INTO micro_dies (email, dia, targetes, encerts) VALUES (?, ?, ?, ?)
+      ON CONFLICT (email, dia) DO UPDATE SET
+        targetes = targetes + excluded.targetes,
+        encerts = encerts + excluded.encerts
+    `).run(email, avui(), detall.length, encerts);
+  } catch (dbErr) {
+    console.error('DB error desant micro:', dbErr.message);   // es respon igual
+  }
+
+  res.json({ ...micro.resultat(encerts, detall.length), detall, avui: microAvui(email) });
 });
 
 // ── Perfil / historial ───────────────────────────────────────
