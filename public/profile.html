@@ -75,6 +75,7 @@
           <div class="card-body">
             <p id="falles-titular" class="falles-titular"></p>
             <div id="falles-llista"></div>
+            <p id="falles-nota" class="corba-nota" style="margin-top:12px;display:none"></p>
           </div>
         </div>
 
@@ -209,6 +210,13 @@
         document.getElementById('falles-abast').textContent =
           falles.dictats === 1 ? 'l\'últim dictat' : `els últims ${falles.dictats} dictats`;
         document.getElementById('falles-titular').textContent = falles.titular || '';
+        // El que no és de cap regla es diu a part i sense rànquing: no haver
+        // escrit una paraula no és una regla que es pugui estudiar, i deixar-ho
+        // competir feia que el titular fos «el que més t'ha sortit és paraula
+        // omesa» a qui havia deixat un dictat a mitges.
+        const nota = document.getElementById('falles-nota');
+        nota.textContent = falles.nota || '';
+        nota.style.display = falles.nota ? '' : 'none';
         // La regla només s'ensenya de la primera: si es posessin totes, la
         // pantalla passaria a ser un llibre de gramàtica i no es llegiria cap.
         document.getElementById('falles-llista').innerHTML = falles.regles.map((r, i) => `

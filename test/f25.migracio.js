@@ -12,6 +12,10 @@ const path = require('path');
 const fs = require('fs');
 const os = require('os');
 const Database = require('better-sqlite3');
+// La versió del catàleg puja cada cop que es parteix o s'afegeix una categoria
+// (F71 la va pujar a 2). La prova mira que la migració marqui amb LA d'avui,
+// no amb un número escrit a mà que caduca al següent canvi.
+const T = require('../src/lib/taxonomia');
 
 const BD = path.join(os.tmpdir(), `dictats-f25-${process.pid}.db`);
 let falles = 0;
@@ -45,7 +49,7 @@ try {
     ['ortografia', 'col·legi', 'collegi', 'ela geminada'],
     ['ortografia', 'força', 'forsa', 'ç'],
     ['ortografia', 'haver', 'haber', 'b/v'],
-    ['ortografia', 'passa', 'pasa', 'essa sorda i sonora'],
+    ['ortografia', 'passa', 'pasa', 's/ss'],
     ['accentuació', 'món', 'mon', 'diacrítics'],
     ['accentuació', 'raïm', 'raim', 'dièresi'],
     ['apostrofació', 'm’agrada', 'magrada', 'pronoms febles'],
@@ -60,7 +64,7 @@ try {
   const files = db.prepare('SELECT type, original, taxonomia FROM user_errors ORDER BY id').all();
   comprova('cada error passa a la seva regla', vells.map(v => v[3]), files.map(f => f.type));
   comprova('i queda marcat amb la versió del catàleg', 9,
-    files.filter(f => f.taxonomia === 1).length);
+    files.filter(f => f.taxonomia === T.VERSIO).length);
 
   console.log('\nI no es torna a fer:');
   db.prepare("UPDATE user_errors SET type = 'tocat' WHERE original = 'força'").run();
@@ -70,9 +74,9 @@ try {
 
   console.log('\nEls errors nous ja neixen classificats:');
   db.prepare(`INSERT INTO user_errors (progress_id, email, type, original, user_wrote, position, taxonomia)
-              VALUES (2, 'algu@exemple.cat', 'h', 'hora', 'ora', 0, 1)`).run();
+              VALUES (2, 'algu@exemple.cat', 'h', 'hora', 'ora', 0, ?)`).run(T.VERSIO);
   arrenca();
-  comprova('una fila amb la versió posada no es toca', { type: 'h', taxonomia: 1 },
+  comprova('una fila amb la versió posada no es toca', { type: 'h', taxonomia: T.VERSIO },
     db.prepare("SELECT type, taxonomia FROM user_errors WHERE original = 'hora'").get());
 
   console.log(falles === 0

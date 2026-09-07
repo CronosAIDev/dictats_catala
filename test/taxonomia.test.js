@@ -41,8 +41,30 @@ cas('trobar', 'trovar', 'b/v');
 cas('escriure', 'escribure', 'b/v');
 cas('força', 'forsa', 'ç');
 cas('caça', 'caca', 'ç');
-cas('passa', 'pasa', 'essa sorda i sonora');
-cas('casa', 'caza', 'essa sorda i sonora');
+cas('passa', 'pasa', 's/ss');
+cas('casa', 'caza', 's/z');
+
+// ── Els tres sons de essa són tres regles ──────────────────────
+//
+// Abans una sola categoria se les emportava totes tres i ensenyava la regla de
+// la doble essa a qui havia escrit «sentre» per «centre», que no hi té res a
+// veure. Es va veure fent un dictat sencer, no llegint el codi.
+console.log('\nEls tres sons de essa, cadascun amb la seva regla:');
+cas('passa', 'pasa', 's/ss');       // doble essa entre vocals
+cas('casa', 'cassa', 's/ss');       // i en l'altre sentit
+cas('centre', 'sentre', 's/c');     // c davant de e — cap doble essa pel mig
+cas('cinema', 'sinema', 's/c');
+cas('servei', 'cervei', 's/c');     // i en l'altre sentit
+cas('places', 'plases', 's/c');
+cas('dotze', 'dotse', 's/z');       // z darrere de consonant
+cas('zero', 'sero', 's/z');
+cas('onze', 'onse', 's/z');
+comprova('la ce trencada mana per damunt de totes tres', 'ç', c('plaça', 'plasa'));
+comprova('dues distincions alhora no són cap regla: no se n\'inventa una',
+  'ortografia', c('dotze', 'dotsse'));
+comprova('i cada categoria té la seva regla escrita, no la d\'una altra',
+  true, [T.regla('s/ss'), T.regla('s/c'), T.regla('s/z')]
+    .every((r, i, tot) => r && tot.indexOf(r) === i));
 
 console.log('\nLa hac i els guionets:');
 cas('haver', 'aver', 'h');

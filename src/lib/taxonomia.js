@@ -57,8 +57,14 @@ const CATEGORIES = [
     regla: 'En català s\'escriu amb v el que en castellà va amb b: haver, trobar, canviar.' },
   { id: 'ç', nom: 'Ce trencada',
     regla: 'La ç va davant de a, o, u: força, caça. Davant de e i de i, s\'escriu c.' },
-  { id: 'essa sorda i sonora', nom: 'Essa sorda i sonora',
+  { id: 's/ss', nom: 'Essa sorda i sonora',
     regla: 'Entre vocals, una sola s sona sonora (casa) i cal ss per a la sorda (passa).' },
+  { id: 's/c', nom: 'Essa o ce',
+    regla: 'Davant de e i de i, el so de essa sorda s\'escriu amb c en unes paraules '
+      + '(centre, cinema) i amb s en altres (sentir, sis): va per paraula.' },
+  { id: 's/z', nom: 'Essa o zeta',
+    regla: 'El so de essa sonora s\'escriu s entre vocals (casa, rosa) i z a principi de '
+      + 'paraula o darrere de consonant (zero, dotze).' },
   { id: 'h', nom: 'La hac',
     regla: 'La h no sona però s\'escriu: haver, hora, ahir.' },
   { id: 'guionets', nom: 'Guionets',
@@ -85,7 +91,7 @@ const CATEGORIES = [
 // diferent, i és el que fa que la migració de `db.js` sàpiga quines files ha de
 // tornar a mirar. Les files noves ja neixen amb aquesta versió posada: si no, es
 // tornarien a classificar a CADA arrencada, per sempre.
-const VERSIO = 1;
+const VERSIO = 2;
 
 const PER_ID = new Map(CATEGORIES.map((c) => [c.id, c]));
 const regla = (id) => (PER_ID.get(id) || {}).regla || '';
@@ -147,8 +153,14 @@ const bComV = (p) => p.replace(/v/g, 'b').replace(/V/g, 'B');
 const senseBiV = (p) => p.replace(/[bv]/gi, '');
 const senseH = (p) => p.replace(/h/gi, '');
 const senseGuionets = (p) => p.replace(/-/g, '');
-const essaPlana = (p) => p.toLowerCase().replace(/ss/g, 's').replace(/ç/g, 's')
-  .replace(/z/g, 's').replace(/c([ei])/g, 's$1');
+// Els tres sons de essa van per separat perquè són TRES regles diferents, i
+// una categoria que se les emporta totes només pot ensenyar-ne una. Vegeu la
+// nota de sota, a `classifica`.
+const ssComS = (p) => p.replace(/ss/g, 's');
+const ceComS = (p) => p.replace(/ç/g, 's').replace(/c([ei])/g, 's$1');
+const zComS = (p) => p.replace(/z/g, 's');
+// Quan cap de les tres soles no explica l'error, però totes juntes sí.
+const essaPlana = (p) => zComS(ceComS(ssComS(p)));
 
 /** Quin accent porta cada vocal, per veure si el que canvia és obert/tancat. */
 function marques(paraula) {
@@ -226,7 +238,18 @@ function classifica(original, escrit, context = {}) {
     && (igual(cedillaCom('s')(ob), cedillaCom('s')(eb)) || igual(cedillaCom('c')(ob), cedillaCom('c')(eb)))) {
     return 'ç';
   }
-  if (igual(essaPlana(ob), essaPlana(eb))) return 'essa sorda i sonora';
+  // Els sons de essa, de la regla més estreta a la més ampla. L'ordre no és
+  // estètic: cada normalitzador esborra UNA distinció, i el primer que iguala
+  // les dues paraules és el que diu quina regla s'ha vulnerat. Si es provés
+  // amb els tres alhora —com es feia— `sentre` per `centre` sortiria com a
+  // essa sorda i sonora i se li ensenyaria a l'alumne la regla de la doble
+  // essa, que no té res a veure amb el seu error.
+  if (igual(ssComS(ob), ssComS(eb))) return 's/ss';
+  if (igual(ceComS(ob), ceComS(eb))) return 's/c';
+  if (igual(zComS(ob), zComS(eb))) return 's/z';
+  // Dues distincions alhora (`dotze` escrit `dotsse`): no hi ha UNA regla que
+  // ho expliqui, i inventar-ne una seria pitjor que dir «mira com s'escriu».
+  if (igual(essaPlana(ob), essaPlana(eb))) return 'ortografia';
   if (igual(bComV(ob), bComV(eb)) || igual(senseBiV(ob), senseBiV(eb))) return 'b/v';
   if (igual(senseH(ob), senseH(eb))) return 'h';
 

@@ -898,7 +898,7 @@ router.get('/profile', requireAuth, (req, res) => {
     },
     setmanes: corba,
     tendencia: progres.tendencia(corba),
-    onFalles: { ...falles, titular: onfalles.titular(falles) },
+    onFalles: { ...falles, titular: onfalles.titular(falles), nota: onfalles.nota(falles) },
     rank: estatDeRang(email),
     ranks: rang.RANGS.map(r => ({ id: r.id, nom: r.nom, punts: r.punts, que: r.que })),
     history: recents,

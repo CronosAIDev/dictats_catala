@@ -32,6 +32,25 @@ const DICTATS_A_MIRAR = 20;
 // que queden es resumeixen en una línia, que és informació sense ser una llista.
 const REGLES_A_ENSENYAR = 6;
 
+// ── El que no és una regla no entra al rànquing ───────────────
+//
+// Aquesta targeta contesta «de quina REGLA falles», i tres categories del
+// catàleg no en són cap: no haver escrit una paraula, haver-ne escrit una de
+// més, i haver escrit una paraula que no era la del dictat. No es poden
+// estudiar i no tenen fitxa possible.
+//
+// Deixar-les competir amb les regles no era neutral: un dictat deixat a mitges
+// posa desenes de `paraula omesa` de cop i el titular passava a ser «el que més
+// t'ha sortit és paraula omesa: 36 de 46 errors». Això és el mateix problema
+// que F69 va arreglar al RESULTAT del dictat —una tirada de paraules no
+// escrites tapava els errors que sí que es podien estudiar— però aquí feia més
+// mal, perquè aquesta és justament la pantalla que ha de dir què estudiar.
+//
+// No s'amaguen: es diuen a part, com un fet i sense rànquing. Deixar un dictat
+// a mitges no són trenta-sis problemes de gramàtica; és una sola cosa que ha
+// passat, i qui ho llegeix ja ho sap.
+const NO_SON_REGLA = new Set(['paraula omesa', 'paraula afegida', 'paraula incorrecta']);
+
 /**
  * Ordena les regles per quantes vegades t'han sortit.
  *
@@ -41,9 +60,22 @@ const REGLES_A_ENSENYAR = 6;
  *   Cada regla amb `id`, `nom`, `regla`, `quants` i `part` (percentatge sencer).
  */
 function perfil(comptes, dictats = 0) {
-  const files = (comptes || []).filter((c) => c && c.quants > 0);
+  const totes = (comptes || []).filter((c) => c && c.quants > 0);
+  const files = totes.filter((c) => !NO_SON_REGLA.has(c.type));
+  const compta = (tipus) => totes
+    .filter((c) => c.type === tipus).reduce((a, c) => a + c.quants, 0);
+  // Les parts es calculen sobre els errors DE REGLA: si el denominador
+  // incloïa les paraules no escrites, un dictat deixat a mitges feia que totes
+  // les regles sortissin al 2 % i la barra no digués res.
   const errors = files.reduce((a, c) => a + c.quants, 0);
-  if (errors === 0) return { dictats, errors: 0, regles: [], resta: { regles: 0, errors: 0 } };
+  const fora = {
+    omeses: compta('paraula omesa'),
+    altres: compta('paraula afegida') + compta('paraula incorrecta'),
+  };
+  fora.total = fora.omeses + fora.altres;
+  if (errors === 0) {
+    return { dictats, errors: 0, regles: [], resta: { regles: 0, errors: 0 }, fora };
+  }
 
   const regles = files
     .map((c) => ({
@@ -64,7 +96,31 @@ function perfil(comptes, dictats = 0) {
       regles: Math.max(0, regles.length - REGLES_A_ENSENYAR),
       errors: regles.slice(REGLES_A_ENSENYAR).reduce((a, r) => a + r.quants, 0),
     },
+    fora,
   };
+}
+
+/**
+ * El que no és de cap regla, dit com un fet i sense rànquing.
+ *
+ * Torna '' quan no n'hi ha: la regla de `CLAUDE.md` és no renyar, i una línia
+ * que digui «0 paraules no escrites» és exactament renyar per res.
+ */
+function nota(p) {
+  const f = (p && p.fora) || {};
+  const trossos = [];
+  if (f.omeses > 0) {
+    trossos.push(f.omeses === 1
+      ? 'una paraula del dictat no es va escriure'
+      : `${f.omeses} paraules del dictat no es van escriure`);
+  }
+  if (f.altres > 0) {
+    trossos.push(f.altres === 1
+      ? 'una no era la del dictat'
+      : `${f.altres} no eren les del dictat`);
+  }
+  if (!trossos.length) return '';
+  return `D'aquests dictats, ${trossos.join(' i ')}.`;
 }
 
 /**
@@ -85,4 +141,4 @@ function titular(p) {
     + `${cap.quants} de ${p.errors} errors.`;
 }
 
-module.exports = { perfil, titular, DICTATS_A_MIRAR, REGLES_A_ENSENYAR };
+module.exports = { perfil, titular, nota, DICTATS_A_MIRAR, REGLES_A_ENSENYAR };
