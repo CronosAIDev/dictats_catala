@@ -14,6 +14,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="Dictats">
   <script src="/a11y.js" defer></script>
+  <script src="/textos.js" defer></script>
   <script src="/rang.js" defer></script>
   <script src="/explicacions.js" defer></script>
   <script src="/anim.js" defer></script>
@@ -109,6 +110,7 @@
           <div class="mobile-level-card" data-level="personal"><div class="lv-icon">✏️</div><div class="lv-name">Els meus</div></div>
         </div>
         <button class="big-btn big-btn-ghost" id="m-btn-add-text" style="display:none;margin-bottom:14px">+ Afegir un text meu</button>
+        <div id="m-text-resum" class="text-list-resum" style="margin:0 0 8px;display:none"></div>
         <div id="m-text-list"></div>
       </div>
 
@@ -382,6 +384,12 @@
       const res = await fetch(personal ? '/api/user-texts' : `/api/texts/${level}`);
       const texts = res.ok ? await res.json() : [];
 
+      // Abans del cas buit a posta: si no, passar de «bàsic» a «els meus» sense
+      // cap text propi deixaria a la pantalla el recompte del nivell anterior.
+      const resum = Textos.resum(texts);
+      $('m-text-resum').textContent = resum;
+      $('m-text-resum').style.display = resum ? '' : 'none';
+
       if (texts.length === 0) {
         $('m-text-list').innerHTML = personal
           ? '<div style="color:var(--text-muted);font-size:.875rem;padding:8px 0">Encara no tens cap text teu. Fes servir el botó de dalt.</div>'
@@ -390,10 +398,12 @@
       }
 
       // El títol d'un text personal l'escriu qui l'ha creat: va escapat.
+      const ctx = { capFet: Textos.progres(texts).fets === 0 };
       $('m-text-list').innerHTML = texts.map(t => `
-        <div class="mobile-text-item" data-id="${escapeHtml(t.id)}">
+        <div class="mobile-text-item${t.seguent ? ' es-seguent' : ''}" data-id="${escapeHtml(t.id)}">
           <div class="mt-title">${escapeHtml(t.title)}</div>
           <div class="mt-meta">${escapeHtml(t.wordCount)} paraules · ${escapeHtml(t.description)}</div>
+          ${Textos.marques(t, ctx)}
         </div>
       `).join('');
 

@@ -8,6 +8,7 @@ const db = require('../lib/db');
 const { compara } = require('../lib/diff');
 const rang = require('../lib/rang');
 const motivacio = require('../lib/motivacio');
+const textos = require('../lib/textos');
 const texts = require('../../data/texts');
 
 const router = express.Router();
@@ -30,6 +31,42 @@ function getScale(errorsCount) {
 }
 
 // ── Texts predefinits ────────────────────────────────────────
+
+/**
+ * Què se sap de cada text per a aquesta persona (F35).
+ *
+ * S'agrupa per `text_id` i **no es filtra per nivell**: els identificadors ja
+ * són únics entre nivells (`b1`, `i1`, `a1`, `personal_7`) i així també
+ * compten les files antigues, que es van desar amb `level = 'unknown'` quan
+ * encara no s'enviava.
+ */
+function historialPerText(email) {
+  return db.prepare(`
+    SELECT text_id,
+           COUNT(*)           AS vegades,
+           MIN(errors_count)  AS millor,
+           MAX(completed_at)  AS ultima
+    FROM user_progress
+    WHERE email = ?
+    GROUP BY text_id
+  `).all(email);
+}
+
+/**
+ * Afegeix a la llista el que se'n sap i marca quin es proposa.
+ *
+ * La resposta segueix sent un **array**: qui ja la consumia no s'assabenta.
+ * La recomanació viatja com un camp de l'element (`seguent`), no com una
+ * clau germana, per no trencar-ho.
+ */
+function ambProgres(llista, email) {
+  const marcats = textos.marca(llista, historialPerText(email));
+  const prop = textos.seguent(marcats);
+  return marcats.map(t => (prop && t.id === prop.id
+    ? { ...t, seguent: true, motiu: prop.motiu }
+    : { ...t, seguent: false, motiu: null }));
+}
+
 router.get('/texts/:level', requireAuth, (req, res) => {
   const { level } = req.params;
   if (!texts[level]) return res.status(400).json({ error: 'Nivell no vàlid' });
@@ -37,7 +74,7 @@ router.get('/texts/:level', requireAuth, (req, res) => {
     id: t.id, title: t.title, description: t.description,
     wordCount: t.text.replace(/\|\|/g, '').split(/\s+/).length,
   }));
-  res.json(list);
+  res.json(ambProgres(list, req.session.profile.email));
 });
 
 router.get('/texts/:level/:id', requireAuth, (req, res) => {
@@ -62,7 +99,7 @@ router.get('/user-texts', requireAuth, (req, res) => {
     wordCount: r.text.replace(/\|\|/g, '').split(/\s+/).length,
     created_at: r.created_at,
   }));
-  res.json(list);
+  res.json(ambProgres(list, req.session.profile.email));
 });
 
 router.post('/user-texts', requireAuth, (req, res) => {

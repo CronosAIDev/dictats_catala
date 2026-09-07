@@ -839,3 +839,25 @@ select:focus-visible,
     scroll-behavior: auto !important;
   }
 }
+
+/* ── Què has fet de cada text (F35) ─────────────
+   Els dos colors estan mesurats amb `test/f39.contrast.js`:
+   --success sobre --success-light 4,79:1 i --primary sobre --primary-light
+   4,75:1, tots dos per sobre del 4,5:1 que demana l'AA. No canviar-los a ull. */
+.text-marques { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+.text-marques > span {
+  font-size: 0.75rem;
+  line-height: 1.4;
+  padding: 1px 8px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+.text-fet { color: var(--success); background: var(--success-light); }
+.text-seguent { color: var(--primary); background: var(--primary-light); font-weight: 600; }
+
+/* El text proposat es distingeix per la vora, no només pel color: qui no
+   distingeix el blau del gris ha de poder veure igualment quin és. */
+.text-item.es-seguent,
+.mobile-text-item.es-seguent { border-color: var(--primary); background: var(--primary-light); }
+
+.text-list-resum { font-size: 0.8125rem; color: var(--text-muted); margin-left: 8px; }

@@ -260,11 +260,19 @@ async function loadTextList(level) {
 
   // El títol d'un text personal l'escriu qui l'ha creat: va escapat, com ja ho
   // anava la resta de la pantalla.
+  // Quin es proposa i com es diu ho decideix `textos.js`, un sol cop per a les
+  // dues vistes. Aquí només es col·loca.
+  const ctx = { capFet: Textos.progres(texts).fets === 0 };
+  const resum = Textos.resum(texts);
+  $('text-list-title').textContent = `Textos disponibles — ${LEVEL_LABELS[level]}`
+    + (resum ? ` · ${resum}` : '');
+
   $('text-list').innerHTML = texts.map(t => `
-    <div class="text-item" data-id="${escapeHtml(t.id)}" data-dbid="${escapeHtml(t.dbId || '')}">
+    <div class="text-item${t.seguent ? ' es-seguent' : ''}" data-id="${escapeHtml(t.id)}" data-dbid="${escapeHtml(t.dbId || '')}">
       <div style="flex:1">
         <div class="text-title">${escapeHtml(t.title)}</div>
         <div class="text-meta">${escapeHtml(t.description)}</div>
+        ${Textos.marques(t, ctx)}
       </div>
       <div style="display:flex;align-items:center;gap:8px">
         <div class="text-words">${escapeHtml(t.wordCount)} paraules</div>
