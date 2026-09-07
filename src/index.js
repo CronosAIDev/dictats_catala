@@ -83,6 +83,10 @@ app.get('/mobile', requireAuth, (req, res) => {
   res.sendFile(path.join(__dirname, '../public/mobile.html'));
 });
 
+app.get('/escriure', requireAuth, (req, res) => {
+  res.sendFile(path.join(__dirname, '../public/escriure.html'));
+});
+
 app.get('/micro', requireAuth, (req, res) => {
   res.sendFile(path.join(__dirname, '../public/micro.html'));
 });

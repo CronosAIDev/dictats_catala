@@ -939,3 +939,11 @@ select:focus-visible,
   color: var(--text-muted);
 }
 .micro-entrada { display: block; text-align: center; text-decoration: none; }
+
+/* ── Escriptura lliure (F29) ────────────────────
+   El tema es llegeix com una consigna, no com un títol: va gros perquè és el
+   que has de tenir al cap mentre escrius. */
+.esc-tema { font-size: 1.0625rem; font-weight: 600; line-height: 1.4; }
+.esc-item { cursor: pointer; }
+.esc-peu { display: flex; align-items: center; gap: 12px; margin-top: 12px; }
+.esc-peu .corba-nota { margin-right: auto; }
