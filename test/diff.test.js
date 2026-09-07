@@ -85,7 +85,7 @@ comprova('posicions exactes',
   // Cinc errors i cinc regles diferents, que és el que F25 havia de permetre
   // dir: abans eren tres `ortografia`, un `accentuació` i un `apostrofació`.
   [[1, 1, 'ortografia'], [2, 1, 'diacrítics'], [4, 1, 'h'],
-   [6, 1, 'pronoms febles'], [9, 1, 'essa sorda i sonora']],
+   [6, 1, 'pronoms febles'], [9, 1, 's/c']],
   resum('Els castells són torres humanes que s' + AP + 'aixequen a les places dels pobles.',
         'Els castels son torres umanes que se aixequen a les plases dels pobles.'));
 
