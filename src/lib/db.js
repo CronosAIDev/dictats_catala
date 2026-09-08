@@ -16,6 +16,29 @@ const db = new Database(DB_PATH);
 db.pragma('journal_mode = WAL');
 
 db.exec(`
+  -- Qui ets, segons Firebase.
+  --
+  -- Firebase contesta la identitat i emet el uid; aquesta taula guarda el que
+  -- l'app necessita saber de tu i que Firebase no ha de saber. La divisio de
+  -- arquitectura_core.md: Firebase diu **qui ets**, la base de cada app guarda
+  -- **el que es teu**.
+  --
+  -- El uid es unic dins del projecte de Firebase, i com que n'hi ha **un de sol
+  -- per a tot Cronos**, la mateixa persona te el mateix uid aqui i a l'aicamper.
+  --
+  -- El correu hi es per dues raons i cap es tecnica: perque el formulari de Data
+  -- Safety el declara, i perque sense ell una peticio de baixa per correu no es
+  -- pot resoldre sense entrar a Firebase. **No s'indexa res per correu**: un
+  -- compte pot canviar d'adreca i el uid no canvia mai.
+  CREATE TABLE IF NOT EXISTS users (
+    uid TEXT PRIMARY KEY,
+    email TEXT,
+    display_name TEXT,
+    created_at TEXT DEFAULT (datetime('now')),
+    last_seen_at TEXT
+  );
+  CREATE INDEX IF NOT EXISTS idx_users_email ON users (email);
+
   CREATE TABLE IF NOT EXISTS user_texts (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     email TEXT NOT NULL,

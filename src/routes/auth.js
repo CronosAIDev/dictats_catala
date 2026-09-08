@@ -1,46 +1,102 @@
 const express = require('express');
 const rateLimit = require('express-rate-limit');
-const { findByEmailAndPassword } = require('../lib/auth');
+const firebase = require('../lib/firebase');
+const db = require('../lib/db');
 
 const router = express.Router();
 
-const loginLimiter = rateLimit({
+// El límit es manté encara que ara la contrasenya la comprovi Firebase: aquí el
+// que es frena és picar contra la verificació de tokens, no endevinar claus.
+const limitEntrada = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 15,
+  max: 30,
   message: { error: 'Massa intents. Torna a provar en 15 minuts.' },
 });
 
-// POST /api/login
-router.post('/login', loginLimiter, async (req, res) => {
-  const { email, password } = req.body;
-  if (!email || !password) {
-    return res.status(400).json({ error: 'Cal un email i una contrasenya' });
-  }
-
-  try {
-    const profile = await findByEmailAndPassword(email, password);
-    if (!profile) {
-      return res.status(401).json({ error: 'Email o contrasenya incorrectes' });
-    }
-
-    req.session.profile = profile;
-    res.json({ ok: true, email: profile.email, first_name: profile.first_name });
-  } catch (err) {
-    console.error('login error:', err.message);
-    res.status(500).json({ error: 'Error intern. Torna a provar.' });
-  }
+/**
+ * La configuració pública del client.
+ *
+ * **No és cap secret i no cal amagar-la**: va al frontend per disseny i Firebase
+ * no la protegeix amb cap clau, la protegeix amb la llista de dominis
+ * autoritzats. Se serveix des d'aquí en comptes d'escriure-la a l'HTML perquè
+ * així el mateix codi val en local i a producció canviant una variable.
+ */
+router.get('/auth-config', (req, res) => {
+  res.json({
+    apiKey: process.env.FIREBASE_API_KEY || '',
+    projectId: firebase.projecte(),
+  });
 });
 
-// POST /api/logout
+/**
+ * Canviar un ID token de Firebase per la sessió de sempre.
+ *
+ * El token es fa servir **una sola vegada, aquí**. No es desa ni torna a
+ * viatjar: a partir d'aquest punt l'app funciona com sempre, amb la cookie.
+ */
+router.post('/session', limitEntrada, async (req, res) => {
+  const { idToken } = req.body || {};
+  const persona = await firebase.qui(idToken);
+  if (!persona) return res.status(401).json({ error: 'La sessió no s\'ha pogut obrir. Torna a entrar.' });
+
+  const ara = new Date().toISOString().slice(0, 19).replace('T', ' ');
+  try {
+    db.prepare(`
+      INSERT INTO users (uid, email, last_seen_at) VALUES (?, ?, ?)
+      ON CONFLICT (uid) DO UPDATE SET email = excluded.email, last_seen_at = excluded.last_seen_at
+    `).run(persona.uid, persona.email, ara);
+  } catch (dbErr) {
+    // Que no poder apuntar l'última visita no impedeixi entrar.
+    console.error('DB error desant l\'usuari:', dbErr.message);
+  }
+
+  // `email` hi segueix sent perquè les consultes de progrés encara hi van; el
+  // canvi a `uid` és el pas següent i es fa a part, per no barrejar canviar
+  // com entres amb canviar com es guarda el teu historial.
+  req.session.profile = {
+    uid: persona.uid,
+    email: persona.email,
+    first_name: (persona.email || '').split('@')[0],
+  };
+  res.json({ ok: true, uid: persona.uid, email: persona.email });
+});
+
 router.post('/logout', (req, res) => {
   req.session.destroy(() => res.json({ ok: true }));
 });
 
-// GET /api/me
 router.get('/me', (req, res) => {
-  const p = req.session?.profile;
+  const p = req.session && req.session.profile;
   if (!p) return res.status(401).json({ error: 'No autenticat' });
-  res.json({ email: p.email, first_name: p.first_name });
+  res.json({ uid: p.uid, email: p.email, first_name: p.first_name });
+});
+
+/**
+ * Esborrar el compte. **Google Play ho exigeix** per a qualsevol app amb comptes.
+ *
+ * S'esborra primer el que és nostre i després el compte de Firebase, que el fa
+ * el client amb el seu propi token. L'ordre no és casual: si es fes al revés i
+ * fallés el segon pas, quedarien dades sense ningú que les pugui reclamar. Així
+ * el pitjor cas és un compte de Firebase sense dades, que es pot tornar a
+ * intentar i no reté res de ningú.
+ */
+router.delete('/account', (req, res) => {
+  const p = req.session && req.session.profile;
+  if (!p) return res.status(401).json({ error: 'No autenticat' });
+
+  const taules = ['user_progress', 'user_errors', 'user_texts', 'repesca',
+    'micro_dies', 'escriptures', 'content_reports'];
+  try {
+    db.transaction(() => {
+      for (const t of taules) db.prepare('DELETE FROM ' + t + ' WHERE email = ?').run(p.email);
+      db.prepare('DELETE FROM users WHERE uid = ?').run(p.uid);
+    })();
+  } catch (dbErr) {
+    console.error('DB error esborrant el compte:', dbErr.message);
+    return res.status(500).json({ error: 'No s\'ha pogut esborrar. Torna a provar.' });
+  }
+
+  req.session.destroy(() => res.json({ ok: true }));
 });
 
 module.exports = router;

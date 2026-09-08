@@ -13,6 +13,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="Dictats">
+  <script src="/identitat.js" defer></script>
   <script src="/pwa.js" defer></script>
 </head>
 <body>
@@ -28,14 +29,19 @@
           <div id="alert" class="alert alert-error" style="display:none"></div>
 
           <div class="form-group">
-            <label class="form-label">Email</label>
+            <label class="form-label" for="login-email">Email</label>
             <input type="email" id="login-email" class="form-input" placeholder="el-teu@email.com" autocomplete="email">
           </div>
           <div class="form-group">
-            <label class="form-label">Contrasenya</label>
-            <input type="password" id="login-password" class="form-input" placeholder="••••••••" autocomplete="current-password">
+            <label class="form-label" for="login-password">Contrasenya</label>
+            <input type="password" id="login-password" class="form-input" placeholder="Mínim 6 caràcters" autocomplete="current-password">
           </div>
-          <button class="btn btn-primary btn-block btn-lg" id="btn-login">Entrar</button>
+          <button class="btn btn-primary btn-block btn-lg" id="btn-principal">Entrar</button>
+          <p class="peu-login" style="margin-top:14px">
+            <a href="#" id="canvia-mode">No tinc compte encara</a>
+            <span aria-hidden="true"> · </span>
+            <a href="#" id="oblidada">He oblidat la contrasenya</a>
+          </p>
         </div>
       </div>
       <p class="peu-login peu-legal">
@@ -46,29 +52,70 @@
 
   <script>
     const alertEl = document.getElementById('alert');
-    function showAlert(msg) { alertEl.textContent = msg; alertEl.style.display = 'flex'; }
+    const btn = document.getElementById('btn-principal');
+    const camps = { email: document.getElementById('login-email'), clau: document.getElementById('login-password') };
 
-    async function login() {
-      const email = document.getElementById('login-email').value.trim();
-      const password = document.getElementById('login-password').value;
-      if (!email || !password) return showAlert('Omple tots els camps');
-      const btn = document.getElementById('btn-login');
-      btn.disabled = true;
-      btn.textContent = 'Entrant…';
-      const res = await fetch('/api/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
-      });
-      const data = await res.json();
-      if (res.ok) { window.location.href = '/'; }
-      else { showAlert(data.error || 'Error desconegut'); btn.disabled = false; btn.textContent = 'Entrar'; }
+    // 'entrar' o 'alta'. La mateixa pantalla per als dos: canvia el botó i què
+    // es crida, no el formulari — són els mateixos dos camps.
+    let mode = 'entrar';
+
+    function avisa(msg, mena) {
+      alertEl.textContent = msg;
+      alertEl.className = 'alert alert-' + (mena || 'error');
+      alertEl.style.display = 'flex';
+    }
+    function calla() { alertEl.style.display = 'none'; }
+
+    function pintaMode() {
+      btn.textContent = mode === 'entrar' ? 'Entrar' : 'Crear el compte';
+      camps.clau.setAttribute('autocomplete', mode === 'entrar' ? 'current-password' : 'new-password');
+      document.getElementById('canvia-mode').textContent =
+        mode === 'entrar' ? 'No tinc compte encara' : 'Ja tinc compte';
     }
 
-    document.getElementById('btn-login').addEventListener('click', login);
-    ['login-email', 'login-password'].forEach(id => {
-      document.getElementById(id).addEventListener('keydown', e => { if (e.key === 'Enter') login(); });
+    async function endavant() {
+      const email = camps.email.value.trim();
+      const clau = camps.clau.value;
+      if (!email || !clau) return avisa('Omple els dos camps.');
+
+      calla();
+      btn.disabled = true;
+      btn.textContent = mode === 'entrar' ? 'Entrant…' : 'Creant el compte…';
+      try {
+        const r = mode === 'entrar'
+          ? await window.Identitat.entra(email, clau)
+          : await window.Identitat.alta(email, clau);
+        await window.Identitat.obreSessio(r.idToken);
+        window.location.href = '/';
+      } catch (err) {
+        avisa(err.message);
+        btn.disabled = false;
+        pintaMode();
+      }
+    }
+
+    async function recuperar(e) {
+      e.preventDefault();
+      const email = camps.email.value.trim();
+      if (!email) { camps.email.focus(); return avisa('Escriu el teu correu i torno a provar-ho.'); }
+      try {
+        await window.Identitat.recupera(email);
+      } catch (err) {
+        // Tant si el correu existeix com si no, es diu el mateix: dir-ho
+        // deixaria provar adreces per saber qui té compte.
+      }
+      avisa('Si aquest correu té compte, li arribarà un missatge per canviar la contrasenya.', 'success');
+    }
+
+    btn.addEventListener('click', endavant);
+    document.getElementById('canvia-mode').addEventListener('click', (e) => {
+      e.preventDefault();
+      mode = mode === 'entrar' ? 'alta' : 'entrar';
+      calla();          // canviar de mode sí que esborra l'avís: és una altra intenció
+      pintaMode();
     });
+    document.getElementById('oblidada').addEventListener('click', recuperar);
+    Object.values(camps).forEach((c) => c.addEventListener('keydown', (e) => { if (e.key === 'Enter') endavant(); }));
   </script>
 </body>
 </html>

@@ -8,6 +8,7 @@ const authRoutes = require('./routes/auth');
 const dictatsRoutes = require('./routes/dictats');
 const requireAuth = require('./middleware/requireAuth');
 const { comprovaAArrencada } = require('./lib/authBypass');
+const config = require('./lib/comprovacions');
 
 const app = express();
 const PORT = process.env.PORT || 3003;
@@ -21,7 +22,15 @@ app.use(helmet({
       scriptSrc: ["'self'", "'unsafe-inline'"],
       styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
       fontSrc: ["'self'", 'https://fonts.gstatic.com'],
-      connectSrc: ["'self'"],
+      // Firebase, i **només** els dos servidors que fan falta. L'alta i
+      // l'entrada van per l'API REST d'Identity Platform; el SDK del client no
+      // es carrega, aixi que no cal obrir `scriptSrc` a cap CDN.
+      //
+      // Sense aixo les crides es bloquejarien **sense cap error visible a la
+      // pantalla**, nomes una linia a la consola: es dels fallos que costen una
+      // tarda de buscar al lloc equivocat.
+      connectSrc: ["'self'", 'https://identitytoolkit.googleapis.com',
+        'https://securetoken.googleapis.com'],
       imgSrc: ["'self'", 'data:', 'blob:'],
     },
   },
@@ -101,6 +110,7 @@ app.use((req, res) => res.status(404).json({ error: 'No trobat' }));
 // NODE_ENV=production, aquí es mor en lloc de servir l'app oberta.
 comprovaAArrencada();
 
+config.comprovaAArrencada();
 app.listen(PORT, () => {
   console.log(`Dictats en català escoltant a http://localhost:${PORT}`);
 });

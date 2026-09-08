@@ -14,6 +14,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="Dictats">
   <script src="/a11y.js" defer></script>
+  <script src="/identitat.js" defer></script>
   <script src="/rang.js" defer></script>
   <script src="/grafic.js" defer></script>
   <script src="/pwa.js" defer></script>
@@ -109,9 +110,74 @@
         </div>
       </div>
     </main>
+    <!-- Esborrar el compte (ho exigeix Google Play) -->
+    <div class="card" style="margin-top:20px">
+      <div class="card-body">
+        <div class="card-title" style="margin-bottom:6px">Esborrar el compte</div>
+        <p class="corba-nota" style="margin-bottom:12px">
+          S'esborra tot el que has fet a Dictats i el teu compte. No es pot desfer.
+        </p>
+        <div id="baixa-pas1">
+          <button class="btn btn-ghost btn-sm" id="btn-baixa">Vull esborrar el meu compte</button>
+        </div>
+        <div id="baixa-pas2" style="display:none">
+          <div class="form-group">
+            <label class="form-label" for="baixa-clau">Escriu la contrasenya per confirmar</label>
+            <input type="password" id="baixa-clau" class="form-input" autocomplete="current-password">
+          </div>
+          <div id="baixa-avis" class="alert alert-error" style="display:none"></div>
+          <button class="btn btn-primary btn-sm" id="btn-baixa-confirma">Esborrar-ho tot</button>
+          <button class="btn btn-ghost btn-sm" id="btn-baixa-cancella">Deixar-ho estar</button>
+        </div>
+      </div>
+    </div>
   </div>
 
   <script>
+    // ── Esborrar el compte ────────────────────────────────────
+    //
+    // Es demana la contrasenya perquè és l'única acció de l'app que no es pot
+    // desfer. L'ordre és: primer el que és nostre, després Firebase. Si es fes
+    // al revés i fallés el segon pas, quedarien dades sense ningú que les pugui
+    // reclamar; així el pitjor cas és un compte sense dades, que es pot tornar
+    // a intentar i no reté res de ningú.
+    (function () {
+      const $$ = (id) => document.getElementById(id);
+      const avis = (m) => { $$('baixa-avis').textContent = m; $$('baixa-avis').style.display = 'flex'; };
+
+      $$('btn-baixa').addEventListener('click', () => {
+        $$('baixa-pas1').style.display = 'none';
+        $$('baixa-pas2').style.display = '';
+        $$('baixa-clau').focus();
+      });
+      $$('btn-baixa-cancella').addEventListener('click', () => {
+        $$('baixa-pas2').style.display = 'none';
+        $$('baixa-pas1').style.display = '';
+        $$('baixa-clau').value = '';
+        $$('baixa-avis').style.display = 'none';
+      });
+
+      $$('btn-baixa-confirma').addEventListener('click', async () => {
+        const clau = $$('baixa-clau').value;
+        if (!clau) return avis('Escriu la contrasenya.');
+        const boto = $$('btn-baixa-confirma');
+        boto.disabled = true;
+        boto.textContent = 'Esborrant…';
+        $$('baixa-avis').style.display = 'none';
+        try {
+          const jo = await (await fetch('/api/me')).json();
+          const fresc = await window.Identitat.entra(jo.email, clau);
+          await fetch('/api/account', { method: 'DELETE' });
+          await window.Identitat.esborraDeFirebase(fresc.idToken);
+          window.location.href = '/login';
+        } catch (err) {
+          avis(err.message);
+          boto.disabled = false;
+          boto.textContent = 'Esborrar-ho tot';
+        }
+      });
+    })();
+
     // El listener va fora d'init(): amb l'historial buit init() fa return abans d'arribar-hi
     document.getElementById('btn-logout').addEventListener('click', async () => {
       await fetch('/api/logout', { method: 'POST' });
