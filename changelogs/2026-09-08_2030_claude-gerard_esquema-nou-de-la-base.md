@@ -74,3 +74,31 @@ això no passés desapercebut.
 L'esquema nou encara no és a producció. La `users` de producció es crearà buida i els dos
 dictats que hi ha rebran el `uid` provisional; els recuperaran en donar-se d'alta amb el
 mateix correu.
+
+---
+
+## També: fora les credencials de MySQL
+
+**Producció encara guardava usuari i contrasenya de `db1.bwai.cc`** al seu `.env`, tot i
+que l'app ja no els fa servir des que la identitat és Firebase. Eren una còpia de
+credencials d'infraestructura **de Trawlingweb** que no servia per a res, i la millor
+manera de protegir unes credencials és no tenir-ne una còpia de més.
+
+Retirades, amb còpia a `.env.abans-de-firebase` i `.env.amb-mysql-08-09` a la mateixa
+màquina. Comprovat després: l'app segueix viva i els dos dominis responen 200.
+
+`.env.example` i el comentari de `authBypass.js` deien encara que el login anava contra la
+MySQL de Trawlingweb i que el bypass existia per no tenir-ne credencials en local. Cap de
+les dues coses és certa des d'avui.
+
+⚠️ **Una finestra que es tanca desplegant**: producció encara corre el codi antic, que sí
+que necessita aquelles credencials per al login. El procés en marxa no s'ha immutat —ja les
+tenia carregades—, però si PM2 el reiniciés abans de desplegar, **el login fallaria** (la
+resta de l'app, no). Desplegar tanca la finestra, perquè el codi nou no toca MySQL.
+
+**El que NO s'ha tocat**: les taules de `db1.bwai.cc`. Allà dins hi ha 41 taules de set
+projectes, l'`aicamper` hi és en producció, ningú sap de qui són `call_`, `pedidos_` i sis
+taules sense prefix, i **no hi ha cap còpia de seguretat de res** en aquell servidor.
+L'única cosa verificada com a nostra i morta —`dictats_usuarios`, `dictats_sessions` i
+l'usuari MySQL `dictats`— està dita a la [#34](https://github.com/CronosAIDev/wiki-cronos/issues/34)
+i espera credencials de `cronosai`, que no tenim.
