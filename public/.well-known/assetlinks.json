@@ -1,1 +1,14 @@
-[]
+[
+  {
+    "relation": [
+      "delegate_permission/common.handle_all_urls"
+    ],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.usecronos.dictats",
+      "sha256_cert_fingerprints": [
+        "79:CE:50:82:91:F5:4B:67:76:77:D8:EA:8F:8B:3D:95:13:13:C0:5C:66:4A:FA:F6:E0:D1:99:0B:54:F8:28:BC"
+      ]
+    }
+  }
+]
