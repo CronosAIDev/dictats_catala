@@ -121,3 +121,40 @@ correcta**; el que queda és el fitxer.
 - **La síntesi de veu dins del TWA.** L'emulador no porta cap veu catalana, així que el que
   es veuria és l'avís de F21, no el dictat. S'ha de provar en un mòbil amb la veu posada.
 - **La càmera per al mode paper.** El TWA la demana a través de Chrome; no s'ha provat.
+
+
+---
+
+## La trampa 2, vista abans de pujar res (08-09-2026)
+
+Aquest document deia —i el gameplan també— que `assetlinks.json` necessita **dues**
+empremtes i que la segona **només existeix després de pujar el primer AAB**. És cert, i per
+això semblava que no es podia comprovar res fins llavors.
+
+**Es podia.** L'APK que construïm i instal·lem nosaltres va signat amb la **nostra** clau de
+pujada, no amb la de Google: aquella empremta ja la tenim des del dia que es va crear el
+keystore. Amb ella sola al fitxer, l'app que construïm verifica.
+
+Fet i **vist**, no suposat:
+
+```
+$ apksigner verify --print-certs app-release-signed.apk
+Signer #1 certificate SHA-256 digest: 79ce5082…54f828bc     ← la mateixa que a assetlinks
+```
+
+L'app s'obre **a pantalla completa, sense la barra de Chrome**, i des de dins s'ha pogut fer
+una alta de compte sencera contra Firebase.
+
+`scripts/assetlinks.js --previ <empremta>` escriu aquest fitxer. Segueix negant-se a
+escriure'n un amb una sola empremta **sense** el flag: el guardarail hi és per evitar un
+descuit, no una decisió a consciència.
+
+⚠️ **El fitxer que en surt NO serveix per a l'app publicada.** Quan Google torni a signar
+l'app hi haurà una segona empremta, i sense afegir-la l'app de Play sortirà amb la barra i
+sense donar cap error — que és la trampa original, intacta.
+
+### El que encara no s'ha provat
+
+Un **mòbil físic**. L'emulador fa la mateixa comprovació d'`assetlinks` i el mateix
+contenidor, però no diu res del micròfon, de la síntesi de veu en català ni de la càmera
+per a la foto — que és justament el que més falla en un aparell de veritat.
