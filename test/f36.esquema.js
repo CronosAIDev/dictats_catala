@@ -142,6 +142,25 @@ try {
   comprova('la que estava revisada porta data', true,
     !!un('SELECT reviewed_at FROM content_reports').reviewed_at);
 
+  console.log('\nLes dates diuen soles que són UTC (§35.3):');
+  comprova('les que ja hi havia porten Z', true,
+    /Z$/.test(un('SELECT completed_at c FROM dictations').c));
+  comprova('cap se n\'escapa', 0,
+    un("SELECT count(*) c FROM dictations WHERE completed_at NOT LIKE '%Z'").c);
+  comprova('i les dels errors també', 0,
+    un("SELECT count(*) c FROM dictation_errors WHERE created_at NOT LIKE '%Z'").c);
+  // El que de debò importa: que llegir-les doni el mateix dia local que abans.
+  const mot = require('../src/lib/motivacio');
+  comprova('els dos formats donen el mateix dia local',
+    mot.dia('2026-09-08 23:45:00'), mot.dia('2026-09-08T23:45:00Z'));
+  comprova('i no és el dia UTC, que a la nit seria un altre', true,
+    mot.dia('2026-09-08T23:45:00Z') !== '2026-09-08'
+    || Intl.DateTimeFormat().resolvedOptions().timeZone === 'UTC');
+  // Amb els dos formats barrejats, l'espai va abans de la T i les files velles
+  // sortirien primer dins d'un mateix dia. Per això es migren totes.
+  comprova('una data nova ordena després d\'una de vella del mateix dia', true,
+    '2026-09-08 23:00:00' < '2026-09-08T01:00:00Z');
+
   console.log('\nLes taules velles ja no hi són:');
   comprova('cap', [], q(`SELECT name FROM sqlite_master WHERE type='table' AND name IN
     ('user_progress','user_errors','user_texts','repesca','micro_dies','escriptures','content_reports_vell')`));

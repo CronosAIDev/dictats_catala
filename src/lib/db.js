@@ -40,6 +40,11 @@ if (migrat) {
   console.log(`Esquema #36: migrat (${migrat.persones} persones) ${quantes || 'sense files'}.`);
 }
 
+// Les dates d'abans del conveni, amb la Z. Va fora de la transacció de dalt
+// perquè no depèn de si hi havia esquema vell: també cal per a una base que ja
+// era nova però es va crear abans d'aquest canvi.
+migracio.datesAmbZ(db);
+
 // ── Reclassificar l'historial amb el catàleg d'avui (F25) ────
 //
 // `taxonomia.classifica` és una funció pura de (esperat, escrit), així que les

@@ -39,7 +39,8 @@ router.post('/session', limitEntrada, async (req, res) => {
   const persona = await firebase.qui(idToken);
   if (!persona) return res.status(401).json({ error: 'La sessió no s\'ha pogut obrir. Torna a entrar.' });
 
-  const ara = new Date().toISOString().slice(0, 19).replace('T', ' ');
+  // Amb la Z, com demana el conveni: la dada ha de dir sola que és UTC.
+  const ara = new Date().toISOString().slice(0, 19) + 'Z';
   try {
     db.prepare(`
       INSERT INTO users (uid, email, last_seen_at) VALUES (?, ?, ?)

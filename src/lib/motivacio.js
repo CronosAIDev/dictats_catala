@@ -21,9 +21,29 @@ const FORMAT = new Intl.DateTimeFormat('sv-SE', {
   timeZone: ZONA, year: 'numeric', month: '2-digit', day: '2-digit',
 });
 
-/** Un `Date` o una data d'SQLite ('YYYY-MM-DD HH:MM:SS', UTC) en clau local 'YYYY-MM-DD'. */
+/**
+ * Un moment desat, en clau local 'YYYY-MM-DD'.
+ *
+ * Accepta les **dues** formes que hi ha a la base, i això no és per comoditat:
+ *
+ *   · `'2026-09-08 17:28:57'`   — el que desava `datetime('now')` fins ara
+ *   · `'2026-09-08T17:28:57Z'`  — el que demana el conveni (§35.3), perquè la
+ *                                  dada digui sola que és UTC
+ *
+ * Afegir la `Z` a cegues, com es feia, converteix la segona en `...ZZ`: una
+ * data invàlida que queia al `slice(0, 10)` i tornava el dia **en UTC** en
+ * comptes del local. A les hores de la nit això és un dia de diferència, i la
+ * ratxa i el repàs es calculen amb això.
+ */
+function aData(valor) {
+  if (valor instanceof Date) return valor;
+  const s = String(valor).trim().replace(' ', 'T');
+  return new Date(s.endsWith('Z') ? s : s + 'Z');
+}
+
+/** Un `Date` o un moment desat, en clau local 'YYYY-MM-DD'. */
 function dia(valor) {
-  const d = valor instanceof Date ? valor : new Date(String(valor).replace(' ', 'T') + 'Z');
+  const d = aData(valor);
   if (Number.isNaN(d.getTime())) return String(valor).slice(0, 10);
   return FORMAT.format(d);
 }

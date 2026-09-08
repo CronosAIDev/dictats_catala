@@ -7,8 +7,10 @@
 //   · La persona és `uid` amb aquest nom exacte a tota taula i tota app.
 //   · El correu viu **només** a `users`. Abans era a set taules: donar de baixa
 //     eren set esborrats i n'hi havia prou d'oblidar-ne un.
-//   · `_at` és un moment amb hora, en UTC. `_on` és una data **local**, sense
-//     hora. La ratxa i la repesca depenen del dia local i abans això no es veia.
+//   · `_at` és un moment amb hora, en UTC i **desat amb la `Z`**: així la dada
+//     diu sola quina zona és, encara que d'aquí a dos anys algú reanomeni la
+//     columna. `_on` és una data **local**, sense hora. La ratxa i la repesca
+//     depenen del dia local, i abans res dins de la dada distingia les dues.
 //   · `_count` per als comptadors.
 //   · Un booleà amb data es desa com a data que pot ser nul·la: `reviewed_at`
 //     diu **si** i **quan**, on abans `reviewed` només deia si.
@@ -43,7 +45,7 @@ const TAULES = `
     uid TEXT PRIMARY KEY,
     email TEXT,
     display_name TEXT,
-    created_at TEXT DEFAULT (datetime('now')),
+    created_at TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
     last_seen_at TEXT
   );
   CREATE INDEX IF NOT EXISTS idx_users_email ON users (email);
@@ -54,7 +56,7 @@ const TAULES = `
     uid TEXT NOT NULL REFERENCES users(uid) ON DELETE CASCADE,
     title TEXT NOT NULL,
     body TEXT NOT NULL,
-    created_at TEXT DEFAULT (datetime('now'))
+    created_at TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))
   );
   CREATE INDEX IF NOT EXISTS idx_custom_texts_uid ON custom_texts (uid, created_at);
 
@@ -72,7 +74,7 @@ const TAULES = `
     word_count INTEGER,
     feedback TEXT,
     feedback_generated INTEGER NOT NULL DEFAULT 0,
-    completed_at TEXT DEFAULT (datetime('now'))
+    completed_at TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))
   );
   CREATE INDEX IF NOT EXISTS idx_dictations_uid ON dictations (uid, completed_at);
 
@@ -105,7 +107,7 @@ const TAULES = `
     explanation TEXT,
     explanation_generated INTEGER NOT NULL DEFAULT 0,
     taxonomy_version INTEGER NOT NULL DEFAULT 0,
-    created_at TEXT DEFAULT (datetime('now'))
+    created_at TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))
   );
   CREATE INDEX IF NOT EXISTS idx_dictation_errors_uid  ON dictation_errors (uid, created_at);
   CREATE INDEX IF NOT EXISTS idx_dictation_errors_type ON dictation_errors (uid, type);
@@ -122,7 +124,7 @@ const TAULES = `
     streak INTEGER NOT NULL DEFAULT 0,
     due_on TEXT NOT NULL,
     fail_count INTEGER NOT NULL DEFAULT 1,
-    created_at TEXT DEFAULT (datetime('now')),
+    created_at TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
     UNIQUE (uid, text_id, phrase_index)
   );
   CREATE INDEX IF NOT EXISTS idx_phrase_reviews_due ON phrase_reviews (uid, due_on);
@@ -145,7 +147,7 @@ const TAULES = `
     word_count INTEGER NOT NULL,
     observation_count INTEGER NOT NULL DEFAULT 0,
     model TEXT,
-    created_at TEXT DEFAULT (datetime('now'))
+    created_at TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))
   );
   CREATE INDEX IF NOT EXISTS idx_writings_uid ON writings (uid, created_at);
 
@@ -159,7 +161,7 @@ const TAULES = `
     context TEXT,
     reason TEXT,
     model TEXT,
-    created_at TEXT DEFAULT (datetime('now')),
+    created_at TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
     reviewed_at TEXT
   );
   CREATE INDEX IF NOT EXISTS idx_content_reports_pending ON content_reports (reviewed_at, created_at);

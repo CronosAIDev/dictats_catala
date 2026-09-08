@@ -196,4 +196,44 @@ function adopta(db, uid, email) {
   return mogudes;
 }
 
-module.exports = { abansDeLEsquema, migra, adopta, velles };
+/**
+ * Les dates que ja hi havia, al format del conveni (§35.3).
+ *
+ * `datetime('now')` desava `'2026-09-08 17:28:57'`: **res dins de la dada deia
+ * que era UTC**. Ara es desa amb la `Z`, i les velles s'hi passen.
+ *
+ * No és cosmètic per dues raons:
+ *
+ * 1. **L'ordre.** Les columnes de data s'ordenen com a text. Amb els dos
+ *    formats barrejats, l'espai (0x20) va abans de la `T` (0x54), o sigui que
+ *    dins d'un mateix dia les files velles sortirien sempre primer, fossin de
+ *    l'hora que fossin. L'historial es veuria mal ordenat i ningú diria per què.
+ * 2. **El dia local.** `dia()` mira l'hora per decidir de quin dia local és un
+ *    moment. Un format que no es reconegui cau al `slice(0, 10)` i torna el dia
+ *    en UTC — a la nit, un dia de diferència a la ratxa.
+ *
+ * Es fa una sola vegada: les que ja porten `Z` no es toquen.
+ */
+function datesAmbZ(db) {
+  const columnes = [
+    ['users', 'created_at'], ['users', 'last_seen_at'],
+    ['custom_texts', 'created_at'], ['dictations', 'completed_at'],
+    ['dictation_errors', 'created_at'], ['phrase_reviews', 'created_at'],
+    ['writings', 'created_at'], ['content_reports', 'created_at'],
+    ['content_reports', 'reviewed_at'],
+  ];
+  let tocades = 0;
+  const fer = db.transaction(() => {
+    for (const [taula, col] of columnes) {
+      tocades += db.prepare(
+        `UPDATE ${taula} SET ${col} = replace(${col}, ' ', 'T') || 'Z'
+         WHERE ${col} IS NOT NULL AND ${col} NOT LIKE '%Z'`
+      ).run().changes;
+    }
+  });
+  fer();
+  if (tocades) console.log(`Conveni §35.3: ${tocades} dates passades a UTC amb Z.`);
+  return tocades;
+}
+
+module.exports = { abansDeLEsquema, migra, adopta, velles, datesAmbZ };
