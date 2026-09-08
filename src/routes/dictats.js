@@ -48,16 +48,63 @@ function getScale(errorsCount) {
  * compten les files antigues, que es van desar amb `level = 'unknown'` quan
  * encara no s'enviava.
  */
+//
+// ── Què és «el millor» d'un text ─────────────────────────────
+//
+// La llista deia «Fet 2 cops, el millor amb 23 errors» d'un text de 26
+// paraules. Això no és el que va passar: no vas fer 23 faltes, **vas parar**.
+//
+// El primer intent d'arreglar-ho va ser comptar només els errors de regla, com
+// fa el perfil. **Va sortir pitjor**, i val la pena que consti: un dictat
+// abandonat gairebé no té errors de regla —no vas escriure res que pogués estar
+// malament— o sigui que passava a ser «el millor», i la llista deia «el millor
+// sense cap error» del text que havies deixat a mitges.
+//
+// El que distingeix aquell intent no és **de què** són els seus errors, sinó
+// que **no el vas intentar**. Així que un dictat on falta més de la meitat del
+// text no compta com a intent: no s'amaga —«Començat» ho diu—, però no es
+// compara amb els que sí que ho van ser.
+//
+// El resultat del dictat i l'historial NO canvien: allà el nombre és el que va
+// passar aquell dia i ha de quadrar amb l'escala i els punts. Aquí la pregunta
+// és una altra: «què en sé, d'aquest text».
+//
+// ⚠️ Els dictats d'abans de desar els errors (F24) no tenen ni una fila. No se'n
+// pot saber quantes paraules van quedar sense escriure, així que **es
+// consideren intents** i es queden amb el seu `error_count`: és l'únic que se'n
+// sap, i tractar-los d'abandonats seria inventar-s'ho.
 function historialPerText(uid) {
+  const forats = [...taxonomia.NO_SON_REGLA].map(() => '?').join(', ');
   return db.prepare(`
     SELECT text_id,
-           COUNT(*)           AS vegades,
-           MIN(error_count)  AS millor,
-           MAX(completed_at)  AS ultima
-    FROM dictations
-    WHERE uid = ?
+           COUNT(*)                                   AS vegades,
+           SUM(CASE WHEN provat THEN 1 ELSE 0 END)    AS intents,
+           MIN(CASE WHEN provat THEN compten END)     AS millor,
+           MAX(completed_at)                          AS ultima
+    FROM (
+      SELECT d.text_id, d.completed_at,
+             (SELECT COUNT(*) FROM dictation_errors e WHERE e.dictation_id = d.id) AS files,
+             (SELECT COUNT(*) FROM dictation_errors e
+               WHERE e.dictation_id = d.id AND e.type = 'paraula omesa') AS omeses,
+             CASE
+               WHEN (SELECT COUNT(*) FROM dictation_errors e WHERE e.dictation_id = d.id) = 0
+                 THEN d.error_count
+               ELSE (SELECT COUNT(*) FROM dictation_errors e
+                      WHERE e.dictation_id = d.id AND e.counted = 1
+                        AND e.type NOT IN (${forats}))
+             END AS compten,
+             CASE
+               -- Sense files no se'n pot saber res: es dona per intentat.
+               WHEN (SELECT COUNT(*) FROM dictation_errors e WHERE e.dictation_id = d.id) = 0 THEN 1
+               WHEN d.word_count IS NULL OR d.word_count = 0 THEN 1
+               ELSE (SELECT COUNT(*) FROM dictation_errors e
+                      WHERE e.dictation_id = d.id AND e.type = 'paraula omesa') * 2 <= d.word_count
+             END AS provat
+      FROM dictations d
+      WHERE d.uid = ?
+    )
     GROUP BY text_id
-  `).all(uid);
+  `).all(...taxonomia.NO_SON_REGLA, uid);
 }
 
 /**

@@ -4,6 +4,10 @@
 // s'hi passa tal com el tornaria la consulta agrupada.
 
 const T = require('../src/lib/textos');
+// La insígnia es pinta al client: `public/textos.js` és un de sol per a les
+// dues vistes, i el que diu forma part de la decisió tant com el que compta.
+global.window = global;
+require('../public/textos.js');
 
 let falles = 0;
 function comprova(nom, esperat, obtingut) {
@@ -67,6 +71,47 @@ console.log('\nEl recompte:');
 comprova('cap fet', { fets: 0, total: 3 }, T.compte(T.marca(BANC, [])));
 comprova('dos de tres', { fets: 2, total: 3 },
   T.compte(T.marca(BANC, [h('b1', 1, 0, '2026-09-01'), h('b3', 2, 1, '2026-09-02')])));
+
+
+// ── Un dictat que vas deixar a mitges no és un intent (F74) ───
+//
+// La llista deia «Fet 2 cops, el millor amb 23 errors» d'un text de 26
+// paraules. No vas fer 23 faltes: vas parar.
+//
+// El primer intent d'arreglar-ho —comptar només els errors de regla, com fa el
+// perfil— sortia PITJOR: un dictat abandonat gairebé no en té, o sigui que
+// passava a ser «el millor» i la llista deia «sense cap error» del text que
+// havies deixat. El que el distingeix no és de què són els seus errors, sinó
+// que no el vas intentar.
+console.log('\nUn dictat deixat a mitges no es compara amb els que sí que vas fer:');
+{
+  const h = (t) => window.Textos.historia(t);
+  comprova('un sol intent de veritat, encara que l\'obrissis dues vegades',
+    'Fet, 3 errors', h({ fet: true, vegades: 2, intents: 1, millorErrors: 3 }));
+  comprova('dos intents, sí que es comparen',
+    'Fet 2 cops, el millor amb 1 error', h({ fet: true, vegades: 2, intents: 2, millorErrors: 1 }));
+  comprova('cap acabat: es diu, i sense cap nombre',
+    'Començat 2 cops', h({ fet: true, vegades: 2, intents: 0, millorErrors: null }));
+  comprova('obert una sola vegada i deixat',
+    'Començat', h({ fet: true, vegades: 1, intents: 0, millorErrors: null }));
+  comprova('sense fer, cap marca: un text no fet no és cap deute',
+    '', h({ fet: false, vegades: 0, intents: 0, millorErrors: null }));
+  // El tic diu «acabat». A «Començat» seria dir el contrari del que hi posa.
+  comprova('el que has acabat porta tic', true,
+    window.Textos.marques({ fet: true, vegades: 1, intents: 1, millorErrors: 2 }).includes('✓'));
+  comprova('el que vas començar i deixar, no', false,
+    window.Textos.marques({ fet: true, vegades: 1, intents: 0, millorErrors: null }).includes('✓'));
+}
+
+console.log('\nL\'historial vell, que no sap què era un intent:');
+{
+  // Les files d'abans de F74 no porten `intents`. Val més comptar-les com a
+  // intents que no pas dir «Començat» de tot l'historial de la gent.
+  const marcats = T.marca([{ id: 'b1' }], [{ text_id: 'b1', vegades: 3, millor: 2 }]);
+  comprova('sense `intents`, val el mateix que `vegades`', 3, marcats[0].intents);
+  comprova('i per tant es llegeix com sempre',
+    'Fet 3 cops, el millor amb 2 errors', window.Textos.historia(marcats[0]));
+}
 
 console.log(falles === 0
   ? '\nLa llista de textos sap què has fet\n'

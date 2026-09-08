@@ -49,7 +49,9 @@ const REGLES_A_ENSENYAR = 6;
 // No s'amaguen: es diuen a part, com un fet i sense rànquing. Deixar un dictat
 // a mitges no són trenta-sis problemes de gramàtica; és una sola cosa que ha
 // passat, i qui ho llegeix ja ho sap.
-const NO_SON_REGLA = new Set(['paraula omesa', 'paraula afegida', 'paraula incorrecta']);
+// La llista viu al catàleg (`taxonomia.NO_SON_REGLA`): la fan servir tres
+// pantalles i tres còpies acabarien divergint.
+const NO_SON_REGLA = taxonomia.NO_SON_REGLA;
 
 /**
  * Ordena les regles per quantes vegades t'han sortit.
