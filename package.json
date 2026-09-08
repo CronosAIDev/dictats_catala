@@ -6,7 +6,7 @@
   "scripts": {
     "start": "node src/index.js",
     "dev": "node --watch src/index.js",
-    "test": "node test/diff.test.js && node test/taxonomia.test.js && node test/rang.test.js && node test/limits.test.js && node test/motivacio.test.js && node test/textos.test.js && node test/progres.test.js && node test/onfalles.test.js && node test/repesca.test.js && node test/micro.test.js && node test/escriptura.test.js && node test/dictat.test.js && node test/errors.test.js",
+    "test": "node test/diff.test.js && node test/taxonomia.test.js && node test/rang.test.js && node test/limits.test.js && node test/motivacio.test.js && node test/textos.test.js && node test/progres.test.js && node test/onfalles.test.js && node test/repesca.test.js && node test/micro.test.js && node test/escriptura.test.js && node test/dictat.test.js && node test/errors.test.js && node test/comprovacions.test.js",
     "benchmark": "node scripts/benchmark/puntua.js"
   },
   "repository": {
@@ -22,14 +22,13 @@
   "homepage": "https://github.com/CronosAIDev/dictats_catala#readme",
   "dependencies": {
     "@anthropic-ai/sdk": "^0.120.0",
-    "bcrypt": "^6.0.0",
     "better-sqlite3": "^12.8.0",
     "dotenv": "^17.3.1",
     "express": "^5.2.1",
     "express-rate-limit": "^8.3.1",
     "express-session": "^1.19.0",
     "helmet": "^8.1.0",
-    "multer": "^2.1.1",
-    "mysql2": "^3.20.0"
+    "jose": "^6.2.12",
+    "multer": "^2.1.1"
   }
 }

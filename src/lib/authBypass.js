@@ -13,6 +13,10 @@
 //      ningú se n'assabenti — que és exactament com passen aquestes coses.
 
 const PERFIL_DE_PROVES = {
+  // El mateix `uid` sempre, perquè les proves en local siguin repetibles. La
+  // forma ha de ser la de producció: si aquí faltés el `uid`, el camí de
+  // desenvolupament provaria una cosa diferent de la que s'acaba desplegant.
+  uid: 'proves-locals-uid',
   email: 'proves@localhost',
   first_name: 'Proves',
 };

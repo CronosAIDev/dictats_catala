@@ -17,3 +17,7 @@ credentials*.json
 
 # Config del editor (VS Code workspace)
 *.code-workspace
+
+# Volcats del navegador de proves (Playwright MCP): son artefactes d una
+# sessio, no del projecte.
+.playwright-mcp/
