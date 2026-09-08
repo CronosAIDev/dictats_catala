@@ -48,16 +48,16 @@ function getScale(errorsCount) {
  * compten les files antigues, que es van desar amb `level = 'unknown'` quan
  * encara no s'enviava.
  */
-function historialPerText(email) {
+function historialPerText(uid) {
   return db.prepare(`
     SELECT text_id,
            COUNT(*)           AS vegades,
-           MIN(errors_count)  AS millor,
+           MIN(error_count)  AS millor,
            MAX(completed_at)  AS ultima
-    FROM user_progress
-    WHERE email = ?
+    FROM dictations
+    WHERE uid = ?
     GROUP BY text_id
-  `).all(email);
+  `).all(uid);
 }
 
 /**
@@ -67,8 +67,8 @@ function historialPerText(email) {
  * La recomanació viatja com un camp de l'element (`seguent`), no com una
  * clau germana, per no trencar-ho.
  */
-function ambProgres(llista, email) {
-  const marcats = textos.marca(llista, historialPerText(email));
+function ambProgres(llista, uid) {
+  const marcats = textos.marca(llista, historialPerText(uid));
   const prop = textos.seguent(marcats);
   return marcats.map(t => (prop && t.id === prop.id
     ? { ...t, seguent: true, motiu: prop.motiu }
@@ -82,7 +82,7 @@ router.get('/texts/:level', requireAuth, (req, res) => {
     id: t.id, title: t.title, description: t.description,
     wordCount: t.text.replace(/\|\|/g, '').split(/\s+/).length,
   }));
-  res.json(ambProgres(list, req.session.profile.email));
+  res.json(ambProgres(list, req.session.profile.uid));
 });
 
 router.get('/texts/:level/:id', requireAuth, (req, res) => {
@@ -96,8 +96,8 @@ router.get('/texts/:level/:id', requireAuth, (req, res) => {
 // ── Textos personals ─────────────────────────────────────────
 router.get('/user-texts', requireAuth, (req, res) => {
   const rows = db.prepare(
-    'SELECT id, title, text, created_at FROM user_texts WHERE email = ? ORDER BY created_at DESC'
-  ).all(req.session.profile.email);
+    'SELECT id, title, body AS text, created_at FROM custom_texts WHERE uid = ? ORDER BY created_at DESC'
+  ).all(req.session.profile.uid);
   const list = rows.map(r => ({
     id: 'personal_' + r.id,
     dbId: r.id,
@@ -107,33 +107,33 @@ router.get('/user-texts', requireAuth, (req, res) => {
     wordCount: r.text.replace(/\|\|/g, '').split(/\s+/).length,
     created_at: r.created_at,
   }));
-  res.json(ambProgres(list, req.session.profile.email));
+  res.json(ambProgres(list, req.session.profile.uid));
 });
 
 router.post('/user-texts', requireAuth, (req, res) => {
   const { title, text } = req.body;
   if (!title || !text) return res.status(400).json({ error: 'Cal títol i text' });
   const result = db.prepare(
-    'INSERT INTO user_texts (email, title, text) VALUES (?, ?, ?)'
-  ).run(req.session.profile.email, title.trim(), text.trim());
+    'INSERT INTO custom_texts (uid, title, body) VALUES (?, ?, ?)'
+  ).run(req.session.profile.uid, title.trim(), text.trim());
   res.json({ ok: true, id: result.lastInsertRowid });
 });
 
 router.delete('/user-texts/:id', requireAuth, (req, res) => {
   db.prepare(
-    'DELETE FROM user_texts WHERE id = ? AND email = ?'
-  ).run(req.params.id, req.session.profile.email);
+    'DELETE FROM custom_texts WHERE id = ? AND uid = ?'
+  ).run(req.params.id, req.session.profile.uid);
   res.json({ ok: true });
 });
 
 // ── Repesca (F27) ────────────────────────────────────────────
 
 /** El text que hi ha darrere d'un `text_id`, sigui del banc o personal. */
-function textDe(email, textId) {
+function textDe(uid, textId) {
   const id = String(textId || '');
   if (id.startsWith('personal_')) {
-    const fila = db.prepare('SELECT text FROM user_texts WHERE id = ? AND email = ?')
-      .get(id.slice('personal_'.length), email);
+    const fila = db.prepare('SELECT body AS text FROM custom_texts WHERE id = ? AND uid = ?')
+      .get(id.slice('personal_'.length), uid);
     return fila ? fila.text : null;
   }
   for (const nivell of Object.keys(texts)) {
@@ -143,7 +143,7 @@ function textDe(email, textId) {
   return null;
 }
 
-/** Avui, en data local, que és amb el que es compara `toca_el`. */
+/** Avui, en data local, que és amb el que es compara `due_on`. */
 const avui = () => motivacio.dia(new Date());
 
 /**
@@ -155,17 +155,17 @@ const avui = () => motivacio.dia(new Date());
  * Si la frase ja hi era, torna a baix de tot. Fallar-la avui vol dir que no la
  * saps, encara que fa una setmana l'encertessis.
  */
-function apuntaFallades(email, parelles) {
+function apuntaFallades(uid, parelles) {
   if (!parelles.length) return;
   const dema = repesca.properaData(0, new Date());
   const posa = db.prepare(`
-    INSERT INTO repesca (email, text_id, frase, passada, toca_el)
+    INSERT INTO phrase_reviews (uid, text_id, phrase_index, streak, due_on)
     VALUES (?, ?, ?, 0, ?)
-    ON CONFLICT (email, text_id, frase) DO UPDATE SET
-      passada = 0, toca_el = excluded.toca_el, fallades = fallades + 1
+    ON CONFLICT (uid, text_id, phrase_index) DO UPDATE SET
+      streak = 0, due_on = excluded.due_on, fail_count = fail_count + 1
   `);
   db.transaction((llista) => {
-    for (const [textId, frase] of llista) posa.run(email, textId, frase, dema);
+    for (const [textId, frase] of llista) posa.run(uid, textId, frase, dema);
   })(parelles);
 }
 
@@ -348,62 +348,62 @@ async function demanaExplicacions(llista, correccio) {
 // reptes) espera a que hi hagi gent a qui retenir, tal com diu la Issue.
 
 /** Total i mitjana d'errors ABANS del dictat que s'està corregint. */
-function historialAbans(email) {
+function historialAbans(uid) {
   const r = db.prepare(`
-    SELECT COUNT(*) AS total, AVG(errors_count) AS mitjana
-    FROM user_progress WHERE email = ?
-  `).get(email);
+    SELECT COUNT(*) AS total, AVG(error_count) AS mitjana
+    FROM dictations WHERE uid = ?
+  `).get(uid);
   return { total: r.total || 0, mitjana: r.mitjana };
 }
 
-function ratxaDe(email) {
+function ratxaDe(uid) {
   // Un any de dates n'hi ha de sobres: la ratxa es trenca al primer dia buit.
   const dies = db.prepare(`
-    SELECT completed_at FROM user_progress
-    WHERE email = ? ORDER BY completed_at DESC LIMIT 400
-  `).all(email).map(r => r.completed_at);
+    SELECT completed_at FROM dictations
+    WHERE uid = ? ORDER BY completed_at DESC LIMIT 400
+  `).all(uid).map(r => r.completed_at);
   return motivacio.ratxa(dies);
 }
 
 /** Penja de la correcció el que l'ha d'acompanyar a la pantalla de resultats. */
-function afegeixAnim(email, correccio, abans) {
-  correccio.ratxa = ratxaDe(email);
+function afegeixAnim(uid, correccio, abans) {
+  correccio.ratxa = ratxaDe(uid);
   correccio.fita = motivacio.fita(abans.total + 1);
   correccio.comparativa = motivacio.comparativa(correccio.errors.length, abans.mitjana, abans.total);
 }
 
-function estatDeRang(email) {
+function estatDeRang(uid) {
   const historial = db.prepare(`
-    SELECT level, total_words AS totalWords, errors_count AS errors
-    FROM user_progress WHERE email = ? ORDER BY completed_at ASC, id ASC
-  `).all(email);
+    SELECT level, word_count AS totalWords, error_count AS errors
+    FROM dictations WHERE uid = ? ORDER BY completed_at ASC, id ASC
+  `).all(uid);
   return rang.estat(historial);
 }
 
 // Torna l'id del progrés desat, que és el que el client necessita per anar a
 // buscar les explicacions després (F33). `null` si la BD ha fallat: llavors no
 // hi ha res a demanar i el resultat es queda amb el text per defecte.
-function desa(email, correccio, { level, textId, textTitle }) {
+function desa(uid, correccio, { level, textId, textTitle }) {
   try {
     const resultat = db.prepare(`
-      INSERT INTO user_progress (email, text_id, text_title, level, score, errors_count, total_words)
+      INSERT INTO dictations (uid, text_id, text_title, level, score, error_count, word_count)
       VALUES (?, ?, ?, ?, ?, ?, ?)
-    `).run(email, textId || 'unknown', textTitle || '', level || 'unknown', correccio.score, correccio.errors.length, correccio.totalWords);
+    `).run(uid, textId || 'unknown', textTitle || '', level || 'unknown', correccio.score, correccio.errors.length, correccio.totalWords);
 
     const progressId = resultat.lastInsertRowid;
     const insereix = db.prepare(`
-      INSERT INTO user_errors (progress_id, email, level, text_id, type, original, user_wrote, position, counted, taxonomia)
+      INSERT INTO dictation_errors (dictation_id, uid, level, text_id, type, expected, written, position, counted, taxonomy_version)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
     const fila = (e, counted) => [
-      progressId, email, level || 'unknown', textId || 'unknown',
+      progressId, uid, level || 'unknown', textId || 'unknown',
       e.type, e.original, e.userWrote, e.position, counted,
       // Ja neix classificada amb el catàleg d'avui: si no, la migració de
       // `db.js` la tornaria a mirar a cada arrencada, per sempre.
       taxonomia.VERSIO,
     ];
     // L'ordre d'aquestes files ÉS l'ordre de `errors.concat(warnings)`, i
-    // `user_errors.id` és autoincremental: per això `ORDER BY id` el recupera
+    // `dictation_errors.id` és autoincremental: per això `ORDER BY id` el recupera
     // exacte a `/api/explicacions/:id` i el client pot casar cada explicació
     // amb el seu error per posició, sense enviar-los-hi de tornada.
     const desaTots = db.transaction((files) => { for (const f of files) insereix.run(...f); });
@@ -424,17 +424,17 @@ function desa(email, correccio, { level, textId, textTitle }) {
  * arreglar-ne una i oblidar l'altra seria qüestió de temps.
  */
 function respon(req, res, correccio, meta) {
-  const email = req.session.profile.email;
+  const uid = req.session.profile.uid;
   const llista = correccio.errors.concat(correccio.warnings);
 
-  const abans = historialAbans(email);
-  const progressId = desa(email, correccio, meta);
+  const abans = historialAbans(uid);
+  const progressId = desa(uid, correccio, meta);
 
   // Les frases fallades tornen (F27). Va aquí i no a `desa()` perquè fa falta
   // el text original, que `desa()` no rep: només compta errors.
   if (meta.originalText && meta.textId && meta.textId !== 'repas') {
     try {
-      apuntaFallades(email, frasesFallades(meta.originalText, correccio)
+      apuntaFallades(uid, frasesFallades(meta.originalText, correccio)
         .map((f) => [meta.textId, f]));
     } catch (err) {
       // Que fallar aquí no es mengi la correcció, que és el que importa.
@@ -442,8 +442,8 @@ function respon(req, res, correccio, meta) {
     }
   }
 
-  correccio.rank = estatDeRang(email);
-  afegeixAnim(email, correccio, abans);
+  correccio.rank = estatDeRang(uid);
+  afegeixAnim(uid, correccio, abans);
 
   correccio.feedbackGenerat = false;
   if (!llista.length) {
@@ -462,33 +462,33 @@ function respon(req, res, correccio, meta) {
  * l'única part que necessita el model (F33).
  *
  * És **idempotent i gratis a partir de la segona vegada**: es desen a
- * `user_errors.explanation` i, si ja hi són, no es torna a cridar l'API. Això
+ * `dictation_errors.explanation` i, si ja hi són, no es torna a cridar l'API. Això
  * també tanca la porta a fer-ho servir per gastar diners en bucle, que és el
  * que hauria obligat a comptar-ho al límit de F14.
  */
 router.post('/explicacions/:id', requireAuth, async (req, res) => {
-  const email = req.session.profile.email;
+  const uid = req.session.profile.uid;
   const id = Number(req.params.id);
   if (!Number.isInteger(id) || id <= 0) return res.status(400).json({ error: 'Id no vàlid' });
 
-  // Amb l'email al WHERE: ningú pot demanar les explicacions d'un altre.
+  // Amb el `uid` al WHERE: ningú pot demanar les explicacions d'un altre.
   const progres = db.prepare(
-    'SELECT id, feedback, feedback_generat FROM user_progress WHERE id = ? AND email = ?'
-  ).get(id, email);
+    'SELECT id, feedback, feedback_generated FROM dictations WHERE id = ? AND uid = ?'
+  ).get(id, uid);
   if (!progres) return res.status(404).json({ error: 'Correcció no trobada' });
 
   const files = db.prepare(`
-    SELECT id, type, original, user_wrote AS userWrote, explanation, generada
-    FROM user_errors WHERE progress_id = ? ORDER BY id ASC
+    SELECT id, type, expected, written AS userWrote, explanation, explanation_generated
+    FROM dictation_errors WHERE dictation_id = ? ORDER BY id ASC
   `).all(id);
 
   const respostaDesada = () => res.json({
     explicacions: files.map(f => ({
       explanation: f.explanation || perDefecte(f.type),
-      generada: !!f.generada,
+      generada: !!f.explanation_generated,
     })),
     feedback: progres.feedback,
-    feedbackGenerat: !!progres.feedback_generat,
+    feedbackGenerat: !!progres.feedback_generated,
   });
 
   // `feedback` desat vol dir que això ja s'ha resolt una vegada — hagi escrit
@@ -501,10 +501,10 @@ router.post('/explicacions/:id', requireAuth, async (req, res) => {
   await demanaExplicacions(llista, correccio);
 
   try {
-    const posa = db.prepare('UPDATE user_errors SET explanation = ?, generada = ? WHERE id = ?');
+    const posa = db.prepare('UPDATE dictation_errors SET explanation = ?, explanation_generated = ? WHERE id = ?');
     db.transaction(() => {
       llista.forEach((e, i) => posa.run(e.explanation, e.generada ? 1 : 0, files[i].id));
-      db.prepare('UPDATE user_progress SET feedback = ?, feedback_generat = ? WHERE id = ?')
+      db.prepare('UPDATE dictations SET feedback = ?, feedback_generated = ? WHERE id = ?')
         .run(correccio.feedback, correccio.feedbackGenerat ? 1 : 0, id);
     })();
   } catch (dbErr) {
@@ -594,23 +594,23 @@ router.post('/correct-image', requireAuth, limitaCorreccions, upload.single('pho
 // ── Repàs: les frases que has fallat tornen (F27) ────────────
 
 /** Les frases d'un text, amb els seus límits, sense demanar-lo dues vegades. */
-function limitsPerText(email) {
+function limitsPerText(uid) {
   const cache = new Map();
   return (id) => {
-    if (!cache.has(id)) cache.set(id, repesca.talls(textDe(email, id) || ''));
+    if (!cache.has(id)) cache.set(id, repesca.talls(textDe(uid, id) || ''));
     return cache.get(id);
   };
 }
 
 router.get('/repesca', requireAuth, (req, res) => {
-  const email = req.session.profile.email;
+  const uid = req.session.profile.uid;
   const files = db.prepare(`
-    SELECT text_id, frase FROM repesca
-    WHERE email = ? AND toca_el <= ?
-    ORDER BY toca_el ASC, id ASC
-  `).all(email, avui());
+    SELECT text_id, phrase_index AS frase FROM phrase_reviews
+    WHERE uid = ? AND due_on <= ?
+    ORDER BY due_on ASC, id ASC
+  `).all(uid, avui());
 
-  const limits = limitsPerText(email);
+  const limits = limitsPerText(uid);
   const toquen = [];
   for (const f of files) {
     const l = (limits(f.text_id) || [])[f.frase];
@@ -649,10 +649,10 @@ router.get('/repesca', requireAuth, (req, res) => {
  * Les de farciment no es toquen si van bé; si es fallen, entren a la repesca
  * com qualsevol altra frase fallada.
  */
-function movRepesca(email, frases, fallades) {
-  const busca = db.prepare('SELECT id, passada, toca_el FROM repesca WHERE email = ? AND text_id = ? AND frase = ?');
-  const puja = db.prepare('UPDATE repesca SET passada = ?, toca_el = ? WHERE id = ?');
-  const treu = db.prepare('DELETE FROM repesca WHERE id = ?');
+function movRepesca(uid, frases, fallades) {
+  const busca = db.prepare('SELECT id, streak AS passada, due_on AS tocaEl FROM phrase_reviews WHERE uid = ? AND text_id = ? AND phrase_index = ?');
+  const puja = db.prepare('UPDATE phrase_reviews SET streak = ?, due_on = ? WHERE id = ?');
+  const treu = db.prepare('DELETE FROM phrase_reviews WHERE id = ?');
   const apreses = [];
   const noves = [];
 
@@ -662,9 +662,9 @@ function movRepesca(email, frases, fallades) {
       const frase = Number(f && f.frase);
       if (!textId || !Number.isInteger(frase)) return;
       const encertada = !fallades.has(i);
-      const fila = busca.get(email, textId, frase);
+      const fila = busca.get(uid, textId, frase);
 
-      if (fila && fila.toca_el <= avui()) {
+      if (fila && fila.tocaEl <= avui()) {
         const seguent = repesca.avanca(fila.passada, encertada);
         if (seguent.apresa) { treu.run(fila.id); apreses.push(textId + '#' + frase); }
         else puja.run(seguent.passada, seguent.tocaEl, fila.id);
@@ -674,7 +674,7 @@ function movRepesca(email, frases, fallades) {
     });
   })();
 
-  if (noves.length) apuntaFallades(email, noves);
+  if (noves.length) apuntaFallades(uid, noves);
   return { apreses: apreses.length, noves: noves.length };
 }
 
@@ -695,7 +695,7 @@ router.post('/repesca/correct', requireAuth, limitaCorreccions, (req, res) => {
     const i = repesca.fraseDe(limits, e.position);
     if (i !== null) fallades.add(i);
   }
-  correccio.repas = movRepesca(req.session.profile.email, frases, fallades);
+  correccio.repas = movRepesca(req.session.profile.uid, frases, fallades);
 
   respon(req, res, correccio, {
     level: 'repas', textId: 'repas', textTitle: 'Repàs', originalText,
@@ -705,46 +705,46 @@ router.post('/repesca/correct', requireAuth, limitaCorreccions, (req, res) => {
 // ── Micro-exercicis de 60 segons (F28) ───────────────────────
 
 /** Quantes targetes has fet avui. */
-function microAvui(email) {
-  const f = db.prepare('SELECT targetes, encerts FROM micro_dies WHERE email = ? AND dia = ?')
-    .get(email, avui());
-  return { targetes: f ? f.targetes : 0, encerts: f ? f.encerts : 0 };
+function microAvui(uid) {
+  const f = db.prepare('SELECT card_count, correct_count FROM daily_cards WHERE uid = ? AND day_on = ?')
+    .get(uid, avui());
+  return { targetes: f ? f.card_count : 0, encerts: f ? f.correct_count : 0 };
 }
 
 router.get('/micro', requireAuth, (req, res) => {
-  const email = req.session.profile.email;
+  const uid = req.session.profile.uid;
   // Es miren més errors dels que caben en una sessió perquè molts es
   // descarten: omissions, paraules de més i puntuació no fan targeta.
   const files = db.prepare(`
-    SELECT id, type, original, user_wrote
-    FROM user_errors
-    WHERE email = ? AND counted = 1 AND original IS NOT NULL AND user_wrote IS NOT NULL
+    SELECT id, type, expected, written
+    FROM dictation_errors
+    WHERE uid = ? AND counted = 1 AND expected IS NOT NULL AND written IS NOT NULL
     ORDER BY id DESC
     LIMIT 200
-  `).all(email);
+  `).all(uid);
 
   // Llavor del dia: recarregar no rebaralla quina opció va primera.
   const llavor = Number(avui().replace(/-/g, ''));
-  res.json({ targetes: micro.targetes(files, llavor), avui: microAvui(email) });
+  res.json({ targetes: micro.targetes(files, llavor), avui: microAvui(uid) });
 });
 
 router.post('/micro', requireAuth, (req, res) => {
-  const email = req.session.profile.email;
+  const uid = req.session.profile.uid;
   const respostes = Array.isArray(req.body && req.body.respostes) ? req.body.respostes : null;
   if (!respostes || !respostes.length) return res.status(400).json({ error: 'Falten respostes' });
   if (respostes.length > micro.PER_SESSIO * 2) return res.status(400).json({ error: 'Massa respostes' });
 
   // La resposta bona NO viatja mai al client abans de contestar: es comprova
   // aquí contra la fila, que a més ha de ser d'aquesta persona.
-  const busca = db.prepare('SELECT id, type, original FROM user_errors WHERE id = ? AND email = ?');
+  const busca = db.prepare('SELECT id, type, expected FROM dictation_errors WHERE id = ? AND uid = ?');
   const detall = [];
   for (const r of respostes) {
-    const fila = busca.get(Number(r && r.id), email);
+    const fila = busca.get(Number(r && r.id), uid);
     if (!fila) continue;
     detall.push({
       id: fila.id,
-      encertat: micro.encerta(fila.original, r.tria),
-      correcta: treuPuntuacio(fila.original),
+      encertat: micro.encerta(fila.expected, r.tria),
+      correcta: treuPuntuacio(fila.expected),
       regla: taxonomia.regla(fila.type),
     });
   }
@@ -752,16 +752,16 @@ router.post('/micro', requireAuth, (req, res) => {
   const encerts = detall.filter((d) => d.encertat).length;
   try {
     db.prepare(`
-      INSERT INTO micro_dies (email, dia, targetes, encerts) VALUES (?, ?, ?, ?)
-      ON CONFLICT (email, dia) DO UPDATE SET
-        targetes = targetes + excluded.targetes,
-        encerts = encerts + excluded.encerts
-    `).run(email, avui(), detall.length, encerts);
+      INSERT INTO daily_cards (uid, day_on, card_count, correct_count) VALUES (?, ?, ?, ?)
+      ON CONFLICT (uid, day_on) DO UPDATE SET
+        card_count = card_count + excluded.card_count,
+        correct_count = correct_count + excluded.correct_count
+    `).run(uid, avui(), detall.length, encerts);
   } catch (dbErr) {
     console.error('DB error desant micro:', dbErr.message);   // es respon igual
   }
 
-  res.json({ ...micro.resultat(encerts, detall.length), detall, avui: microAvui(email) });
+  res.json({ ...micro.resultat(encerts, detall.length), detall, avui: microAvui(uid) });
 });
 
 // ── Escriptura lliure (F29) ──────────────────────────────────
@@ -810,9 +810,9 @@ router.post('/escriure', requireAuth, limitaCorreccions, async (req, res) => {
   // Es desa que ho has fet, no el que has escrit.
   try {
     db.prepare(`
-      INSERT INTO escriptures (email, tema, paraules, observacions, model)
+      INSERT INTO writings (uid, topic, word_count, observation_count, model)
       VALUES (?, ?, ?, ?, ?)
-    `).run(req.session.profile.email, elTema ? elTema.id : null,
+    `).run(req.session.profile.uid, elTema ? elTema.id : null,
       comprovacio.paraules, net.observacions.length, MODEL);
   } catch (dbErr) {
     console.error('DB error desant escriptura:', dbErr.message);   // es respon igual
@@ -828,32 +828,32 @@ router.post('/escriure', requireAuth, limitaCorreccions, async (req, res) => {
 
 // ── Perfil / historial ───────────────────────────────────────
 router.get('/profile', requireAuth, (req, res) => {
-  const email = req.session.profile.email;
+  const uid = req.session.profile.uid;
   const selecciona = ordre => db.prepare(`
-    SELECT text_id, text_title, level, score, errors_count, completed_at
-    FROM user_progress
-    WHERE email = ?
+    SELECT text_id, text_title, level, score, error_count, completed_at
+    FROM dictations
+    WHERE uid = ?
     ORDER BY ${ordre}
     LIMIT 50
-  `).all(email).map(r => ({ ...r, scale: getScale(r.errors_count || 0) }));
+  `).all(uid).map(r => ({ ...r, scale: getScale(r.error_count || 0) }));
 
   const recents = selecciona('completed_at DESC, id DESC');
-  const millors = selecciona('errors_count ASC, completed_at DESC');
+  const millors = selecciona('error_count ASC, completed_at DESC');
 
   // Les xifres surten de tot l'historial, no dels 50 que es pinten
   const agregats = db.prepare(`
-    SELECT COUNT(*) AS total, MIN(errors_count) AS best
-    FROM user_progress WHERE email = ?
-  `).get(email);
+    SELECT COUNT(*) AS total, MIN(error_count) AS best
+    FROM dictations WHERE uid = ?
+  `).get(uid);
 
   // La mitjana i la corba es calculen a `src/lib/progres.js` i no amb un AVG
   // d'SQL, per dos motius: la taxa ha de pesar per paraules (no és la mitjana
-  // de les taxes) i els dictats sense `total_words` no hi poden entrar. Les
+  // de les taxes) i els dictats sense `word_count` no hi poden entrar. Les
   // files hi van senceres perquè la lògica sigui provable sense base de dades.
   const files = db.prepare(`
-    SELECT errors_count, total_words, completed_at
-    FROM user_progress WHERE email = ?
-  `).all(email);
+    SELECT error_count, word_count, completed_at
+    FROM dictations WHERE uid = ?
+  `).all(uid);
   const xifres = progres.resum(files);
   const corba = progres.setmanes(files);
 
@@ -863,26 +863,27 @@ router.get('/profile', requireAuth, (req, res) => {
   // errors de puntuació no compten a l'escala i tampoc han de comptar aquí —
   // ensenyarien un forat que no és de qui escriu.
   //
-  // El filtre per `email` hi és dues vegades a posta: la subconsulta ja ho
+  // El filtre per `uid` hi és dues vegades a posta: la subconsulta ja ho
   // acota, però una condició d'aïllament no ha de dependre d'una subconsulta
   // que algun dia es pugui reescriure.
   const ultims = db.prepare(`
-    SELECT id FROM user_progress WHERE email = ?
+    SELECT id FROM dictations WHERE uid = ?
     ORDER BY completed_at DESC, id DESC LIMIT ?
-  `).all(email, onfalles.DICTATS_A_MIRAR).map(r => r.id);
+  `).all(uid, onfalles.DICTATS_A_MIRAR).map(r => r.id);
 
   const comptes = ultims.length ? db.prepare(`
     SELECT type, COUNT(*) AS quants
-    FROM user_errors
-    WHERE email = ? AND counted = 1
-      AND progress_id IN (${ultims.map(() => '?').join(',')})
+    FROM dictation_errors
+    WHERE uid = ? AND counted = 1
+      AND dictation_id IN (${ultims.map(() => '?').join(',')})
     GROUP BY type
-  `).all(email, ...ultims) : [];
+  `).all(uid, ...ultims) : [];
 
   const falles = onfalles.perfil(comptes, ultims.length);
 
   res.json({
-    email,
+    uid,
+    email: req.session.profile.email,
     first_name: req.session.profile.first_name,
     stats: {
       total: agregats.total,
@@ -894,12 +895,12 @@ router.get('/profile', requireAuth, (req, res) => {
       errorsPer100: xifres.taxa,
       dictatsComptats: xifres.comptats,
       bestErrors: agregats.best ?? null,
-      ratxa: ratxaDe(email),
+      ratxa: ratxaDe(uid),
     },
     setmanes: corba,
     tendencia: progres.tendencia(corba),
     onFalles: { ...falles, titular: onfalles.titular(falles), nota: onfalles.nota(falles) },
-    rank: estatDeRang(email),
+    rank: estatDeRang(uid),
     ranks: rang.RANGS.map(r => ({ id: r.id, nom: r.nom, punts: r.punts, que: r.que })),
     history: recents,
     millors,
@@ -909,9 +910,9 @@ router.get('/profile', requireAuth, (req, res) => {
 // ── Progrés ──────────────────────────────────────────────────
 router.get('/progress', requireAuth, (req, res) => {
   const rows = db.prepare(`
-    SELECT text_id, text_title, level, score, errors_count, completed_at
-    FROM user_progress WHERE email = ? ORDER BY completed_at DESC LIMIT 20
-  `).all(req.session.profile.email);
+    SELECT text_id, text_title, level, score, error_count, completed_at
+    FROM dictations WHERE uid = ? ORDER BY completed_at DESC LIMIT 20
+  `).all(req.session.profile.uid);
   res.json(rows);
 });
 
@@ -944,10 +945,10 @@ router.post('/report', requireAuth, limitReports, (req, res) => {
 
   try {
     db.prepare(
-      `INSERT INTO content_reports (email, kind, content, context, reason, model)
+      `INSERT INTO content_reports (uid, kind, content, context, reason, model)
        VALUES (?, ?, ?, ?, ?, ?)`
     ).run(
-      req.session.profile.email,
+      req.session.profile.uid,
       kind,
       String(content).slice(0, MAX_REPORT),
       context ? String(context).slice(0, 500) : null,

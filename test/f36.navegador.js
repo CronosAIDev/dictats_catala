@@ -101,15 +101,15 @@ const espera = ms => new Promise(r => setTimeout(r, ms));
     await dicta('basic', 'b2', 1);
     p = await perfil();
     const bd = new Database(BD);
-    const files = bd.prepare('SELECT errors_count FROM user_progress').all();
-    const mitjanaReal = files.reduce((a, f) => a + f.errors_count, 0) / files.length;
+    const files = bd.prepare('SELECT error_count FROM dictations').all();
+    const mitjanaReal = files.reduce((a, f) => a + f.error_count, 0) / files.length;
     comprova('el decimal hi és', Math.round(mitjanaReal * 10) / 10, p.stats.avgErrors);
     comprova('i no és l\'enter', true, !Number.isInteger(p.stats.avgErrors) || Number.isInteger(mitjanaReal));
 
     // ── 3. Un dictat vell sense paraules no embruta la taxa
     console.log('\nUn dictat antic que no sap quantes paraules tenia:');
-    bd.prepare(`INSERT INTO user_progress (email, text_id, text_title, level, score, errors_count, total_words, completed_at)
-                VALUES (?, 'b9', 'Antic', 'basic', 0, 40, NULL, datetime('now'))`).run(p.email);
+    bd.prepare(`INSERT INTO dictations (uid, text_id, text_title, level, score, error_count, word_count, completed_at)
+                VALUES (?, 'b9', 'Antic', 'basic', 0, 40, NULL, datetime('now'))`).run(p.uid);
     const abansTaxa = p.stats.errorsPer100;
     p = await perfil();
     comprova('compta com a dictat fet', 4, p.stats.total);
@@ -120,10 +120,10 @@ const espera = ms => new Promise(r => setTimeout(r, ms));
     // ── 4. La corba per setmanes
     console.log('\nLa corba, amb els dictats escampats per setmanes:');
     // Les files són de veritat; només se'ls mou el rellotge.
-    const ids = bd.prepare('SELECT id FROM user_progress ORDER BY id').all().map(r => r.id);
-    bd.prepare("UPDATE user_progress SET completed_at = datetime('now','-15 days') WHERE id = ?").run(ids[0]);
-    bd.prepare("UPDATE user_progress SET completed_at = datetime('now','-14 days') WHERE id = ?").run(ids[1]);
-    bd.prepare("UPDATE user_progress SET completed_at = datetime('now') WHERE id = ?").run(ids[2]);
+    const ids = bd.prepare('SELECT id FROM dictations ORDER BY id').all().map(r => r.id);
+    bd.prepare("UPDATE dictations SET completed_at = datetime('now','-15 days') WHERE id = ?").run(ids[0]);
+    bd.prepare("UPDATE dictations SET completed_at = datetime('now','-14 days') WHERE id = ?").run(ids[1]);
+    bd.prepare("UPDATE dictations SET completed_at = datetime('now') WHERE id = ?").run(ids[2]);
     bd.close();
 
     p = await perfil();

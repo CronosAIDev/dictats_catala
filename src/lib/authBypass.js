@@ -1,10 +1,14 @@
-// Vàlvula temporal per veure l'app en local sense credencials de MySQL.
+// Vàlvula per mirar l'app en local sense passar pel login.
 //
-// Per què existeix: l'autenticació va contra `BrandWaiUserProfile` (MySQL
-// compartida amb FeedScale). Sense `MYSQL_USER`/`MYSQL_PASSWORD` al `.env`, en
-// local no es pot entrar de cap manera i l'app queda invisible.
+// Per què existeix: l'entrada va contra Firebase, i per veure una pantalla en
+// local caldria donar-se d'alta de veritat i crear un compte al projecte
+// compartit de Cronos cada vegada. Amb això es pot obrir l'app i prou.
 //
-// AIXÒ S'HA DE TREURE quan hi hagi credencials en local. No és una funcionalitat.
+// (Fins al 08-09 la raó era una altra: l'autenticació anava contra la MySQL de
+// Trawlingweb i en local no hi havia credencials. Aquella dependència ja no hi
+// és — la identitat és Firebase i el progrés, SQLite.)
+//
+// No és una funcionalitat, i el dia que molesti es treu.
 //
 // Els dos panys, i el segon és el que importa:
 //   1. Cal `DICTATS_AUTH_BYPASS=1` explícit. Per defecte, apagat.

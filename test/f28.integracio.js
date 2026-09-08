@@ -78,8 +78,8 @@ const espera = ms => new Promise(r => setTimeout(r, ms));
     console.log('\nContestant:');
     const bd = new Database(BD);
     const bona = (id) => {
-      const f = bd.prepare('SELECT original FROM user_errors WHERE id = ?').get(id);
-      return f.original.replace(/[.,;:!?»«]/g, '');
+      const f = bd.prepare('SELECT expected FROM dictation_errors WHERE id = ?').get(id);
+      return f.expected.replace(/[.,;:!?»«]/g, '');
     };
     const totBe = await post('/api/micro', {
       respostes: m.targetes.map(t => ({ id: t.id, tria: bona(t.id) })),
@@ -101,9 +101,14 @@ const espera = ms => new Promise(r => setTimeout(r, ms));
     comprova('sense respostes, 400', 400,
       (await fetch(BASE + '/api/micro', { method: 'POST', headers: caps, body: '{}' })).status);
     // Una fila d'una altra persona: ni es corregeix ni es compta.
-    bd.prepare(`INSERT INTO user_errors (progress_id, email, type, original, user_wrote, position, counted, taxonomia)
-                VALUES (1, 'altre@exemple.cat', 'h', 'hora', 'ora', 0, 1, 1)`).run();
-    const alie = bd.prepare("SELECT id FROM user_errors WHERE email = 'altre@exemple.cat'").get().id;
+    //
+    // Cal donar-la d'alta primer: des de la #36 tot penja de `users` amb una
+    // clau aliena, i el motor no deixa desar l'error d'algú que no existeix.
+    // Abans això colava, i no perquè estigués bé.
+    bd.prepare("INSERT OR IGNORE INTO users (uid, email) VALUES ('altre-uid', 'altre@exemple.cat')").run();
+    bd.prepare(`INSERT INTO dictation_errors (dictation_id, uid, type, expected, written, position, counted, taxonomy_version)
+                VALUES (1, 'altre-uid', 'h', 'hora', 'ora', 0, 1, 1)`).run();
+    const alie = bd.prepare("SELECT id FROM dictation_errors WHERE uid = 'altre-uid'").get().id;
     const cap = await post('/api/micro', { respostes: [{ id: alie, tria: 'hora' }] });
     comprova('la targeta d\'un altre no es contesta', 0, cap.total);
     comprova('i no suma al teu dia', 6, cap.avui.targetes);

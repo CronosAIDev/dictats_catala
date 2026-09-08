@@ -45,6 +45,10 @@ router.post('/session', limitEntrada, async (req, res) => {
       INSERT INTO users (uid, email, last_seen_at) VALUES (?, ?, ?)
       ON CONFLICT (uid) DO UPDATE SET email = excluded.email, last_seen_at = excluded.last_seen_at
     `).run(persona.uid, persona.email, ara);
+    // Qui ja tenia historial d'abans de Firebase el recupera aquí: les seves
+    // files duien un `uid` provisional fet del correu i passen al de veritat.
+    // És la promesa de la Fase 0, i es compleix la primera vegada que entra.
+    db.adopta(persona.uid, persona.email);
   } catch (dbErr) {
     // Que no poder apuntar l'última visita no impedeixi entrar.
     console.error('DB error desant l\'usuari:', dbErr.message);
@@ -84,11 +88,14 @@ router.delete('/account', (req, res) => {
   const p = req.session && req.session.profile;
   if (!p) return res.status(401).json({ error: 'No autenticat' });
 
-  const taules = ['user_progress', 'user_errors', 'user_texts', 'repesca',
-    'micro_dies', 'escriptures', 'content_reports'];
+  // Amb les claus alienes activades, esborrar la persona s'endú tot el que hi
+  // penja: el motor ho garanteix, no una llista que algú ha de recordar
+  // actualitzar cada cop que neix una taula. `content_reports` no hi té clau
+  // aliena a posta —una denúncia ha de sobreviure a qui la fa— i per això és
+  // l'única que s'esborra a mà.
   try {
     db.transaction(() => {
-      for (const t of taules) db.prepare('DELETE FROM ' + t + ' WHERE email = ?').run(p.email);
+      db.prepare('DELETE FROM content_reports WHERE uid = ?').run(p.uid);
       db.prepare('DELETE FROM users WHERE uid = ?').run(p.uid);
     })();
   } catch (dbErr) {

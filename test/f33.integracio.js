@@ -90,9 +90,12 @@ const espera = ms => new Promise(r => setTimeout(r, ms));
 
     console.log('\nCada explicació és del seu amo:');
     const bd = new Database(BD);
+    // La persona ha d'existir: des de la #36 el dictat hi apunta amb una clau
+    // aliena i el motor no deixa desar-ne un de ningú.
+    bd.prepare("INSERT OR IGNORE INTO users (uid, email) VALUES ('altre-uid', 'altre@algu.cat')").run();
     const altre = bd.prepare(
-      'INSERT INTO user_progress (email, text_id, text_title, level, score, errors_count) VALUES (?,?,?,?,?,?)'
-    ).run('altre@algu.cat', 'x', 'X', 'basic', 50, 1).lastInsertRowid;
+      'INSERT INTO dictations (uid, text_id, text_title, level, score, error_count) VALUES (?,?,?,?,?,?)'
+    ).run('altre-uid', 'x', 'X', 'basic', 50, 1).lastInsertRowid;
     bd.close();
 
     comprova('el progrés d\'un altre dona 404', 404, (await crida('/api/explicacions/' + altre)).status);

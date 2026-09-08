@@ -64,7 +64,7 @@ const espera = ms => new Promise(r => setTimeout(r, ms));
     comprova('la correcció troba un error', 1, c1.errors.length);
 
     const bd = new Database(BD);
-    const files = () => bd.prepare('SELECT text_id, frase, passada, toca_el FROM repesca ORDER BY frase').all();
+    const files = () => bd.prepare('SELECT text_id, phrase_index AS frase, streak AS passada, due_on AS toca_el FROM phrase_reviews ORDER BY phrase_index').all();
     comprova('queda apuntada una frase', 1, files().length);
     comprova('i és la que has fallat', 2, files()[0].frase);
     comprova('per demà, no per avui', true, files()[0].toca_el > new Date().toISOString().slice(0, 10));
@@ -75,7 +75,7 @@ const espera = ms => new Promise(r => setTimeout(r, ms));
     // ── 2. Passa un dia ────────────────────────────────
     console.log('\nQuan arriba el dia:');
     const avui = () => new Date().toISOString().slice(0, 10);
-    bd.prepare('UPDATE repesca SET toca_el = ?').run(avui());
+    bd.prepare('UPDATE phrase_reviews SET due_on = ?').run(avui());
     const sessio = await get('/api/repesca');
     comprova('hi ha una frase pendent', 1, sessio.pendents);
     comprova('però la sessió en porta més, barrejades', true, sessio.frases.length >= 4);
@@ -98,7 +98,7 @@ const espera = ms => new Promise(r => setTimeout(r, ms));
 
     // ── 4. Fallar-la la torna a baix de tot ────────────
     console.log('\nI si la falles, torna a començar:');
-    bd.prepare('UPDATE repesca SET toca_el = ?, passada = 2').run(avui());
+    bd.prepare('UPDATE phrase_reviews SET due_on = ?, streak = 2').run(avui());
     const s2 = await get('/api/repesca');
     const quina = s2.frases.findIndex(f => f.text_id === 'i1' && f.frase === 2);
     const malament = s2.frases.map((f, i) => (i === quina ? f.text.replace('castanyes', 'castanyas') : f.text)).join(' ');
@@ -110,7 +110,7 @@ const espera = ms => new Promise(r => setTimeout(r, ms));
     // ── 5. Encertar-la tres vegades l'acaba ────────────
     console.log('\nTres encerts seguits i ja no torna:');
     for (let i = 0; i < 3; i++) {
-      bd.prepare('UPDATE repesca SET toca_el = ?').run(avui());
+      bd.prepare('UPDATE phrase_reviews SET due_on = ?').run(avui());
       const s = await get('/api/repesca');
       if (!s.pendents) break;
       await post('/api/repesca/correct', {
