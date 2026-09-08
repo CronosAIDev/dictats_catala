@@ -102,3 +102,24 @@ taules sense prefix, i **no hi ha cap còpia de seguretat de res** en aquell ser
 L'única cosa verificada com a nostra i morta —`dictats_usuarios`, `dictats_sessions` i
 l'usuari MySQL `dictats`— està dita a la [#34](https://github.com/CronosAIDev/wiki-cronos/issues/34)
 i espera credencials de `cronosai`, que no tenim.
+
+---
+
+## I les dates, amb la `Z` (§35.3)
+
+`datetime('now')` desava `'2026-09-08 17:28:57'`: **res dins de la dada deia que era UTC**.
+El conveni demana que les `_at` es desin amb `Z` perquè la dada s'expliqui sola encara que
+d'aquí a dos anys algú reanomeni la columna.
+
+No és cosmètic. Dues coses es trencaven amb els dos formats barrejats:
+
+- **L'ordre.** Les dates s'ordenen com a text, i l'espai (`0x20`) va abans de la `T`
+  (`0x54`): dins d'un mateix dia, les files velles sortirien **sempre primer**, fossin de
+  l'hora que fossin. L'historial es veuria mal ordenat i ningú diria per què.
+- **El dia local.** `motivacio.dia()` afegia la `Z` a cegues, cosa que amb el format nou
+  dona `...ZZ` — una data invàlida que queia al `slice(0, 10)` i tornava el dia **en UTC**.
+  A partir de les deu del vespre això és **un dia de diferència** a la ratxa i al repàs.
+
+Ara `dia()` accepta les dues formes i `migracio.datesAmbZ()` passa les que ja hi havia
+(**23 a la base local**). Les que ja porten `Z` no es toquen, així que passar-hi dues
+vegades no fa res.
