@@ -35,9 +35,9 @@ const PER_SESSIO = 8;
  * la mateixa paraula i la targeta no tindria resposta).
  */
 function potSerTargeta(fila) {
-  if (!fila || !fila.original || !fila.user_wrote) return false;
-  const bo = treuPuntuacio(fila.original);
-  const mal = treuPuntuacio(fila.user_wrote);
+  if (!fila || !fila.expected || !fila.written) return false;
+  const bo = treuPuntuacio(fila.expected);
+  const mal = treuPuntuacio(fila.written);
   return bo.length > 0 && mal.length > 0 && bo !== mal;
 }
 
@@ -49,7 +49,7 @@ function potSerTargeta(fila) {
  * has fallat `és` sis vegades, no vols sis targetes iguals seguides, vols que
  * `és` surti abans que una que has fallat un cop.
  *
- * @param {Array} files   `[{id, type, original, user_wrote}]`, de més recent a més antic.
+ * @param {Array} files   `[{id, type, expected, written}]`, de més recent a més antic.
  * @param {number} llavor Per barrejar quina forma va primera.
  * @returns {Array} `[{id, tipus, nom, regla, opcions: [a, b], vegades}]`
  */
@@ -57,8 +57,8 @@ function targetes(files, llavor = 1, quantes = PER_SESSIO) {
   const per = new Map();
   for (const f of files || []) {
     if (!potSerTargeta(f)) continue;
-    const bo = treuPuntuacio(f.original);
-    const mal = treuPuntuacio(f.user_wrote);
+    const bo = treuPuntuacio(f.expected);
+    const mal = treuPuntuacio(f.written);
     const clau = bo + '|' + mal;
     if (!per.has(clau)) {
       per.set(clau, { id: f.id, tipus: f.type, correcta: bo, erronia: mal, vegades: 0 });

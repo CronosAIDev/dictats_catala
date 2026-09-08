@@ -133,7 +133,7 @@ const espera = ms => new Promise(r => setTimeout(r, ms));
 
     console.log('\nUn perfil buit no ensenya la targeta:');
     const bd = new Database(BD);
-    bd.prepare('DELETE FROM user_errors').run();
+    bd.prepare('DELETE FROM dictation_errors').run();
     bd.close();
     await page.goto(BASE + '/profile', { waitUntil: 'networkidle0' });
     await espera(900);

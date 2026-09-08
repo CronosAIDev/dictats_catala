@@ -16,8 +16,8 @@ function comprova(nom, esperat, obtingut) {
 // Un dictat: dia del setembre de 2026, errors, paraules.
 const d = (dia, errors, paraules) => ({
   completed_at: `2026-09-${String(dia).padStart(2, '0')} 12:00:00`,
-  errors_count: errors,
-  total_words: paraules,
+  error_count: errors,
+  word_count: paraules,
 });
 
 console.log('\nErrors per 100 paraules, que és el que es pot comparar:');
@@ -44,14 +44,14 @@ comprova('un historial buit no dona cap xifra',
 
 console.log('\nEls dictats vells, que no saben quantes paraules tenien:');
 {
-  const r = P.resum([d(1, 2, 34), { completed_at: '2026-09-02 12:00:00', errors_count: 8, total_words: null }]);
+  const r = P.resum([d(1, 2, 34), { completed_at: '2026-09-02 12:00:00', error_count: 8, word_count: null }]);
   comprova('segueixen comptant com a dictats fets', 2, r.dictats);
   comprova('però no entren a la taxa', 1, r.comptats);
   comprova('i la taxa surt només dels que sí que se sap', 5.9, r.taxa);
   comprova('la mitjana d\'errors sí que els compta tots', 5, r.mitjanaErrors);
 }
 comprova('si cap dictat sap les paraules, no hi ha taxa', null,
-  P.resum([{ completed_at: '2026-09-01 12:00:00', errors_count: 3, total_words: null }]).taxa);
+  P.resum([{ completed_at: '2026-09-01 12:00:00', error_count: 3, word_count: null }]).taxa);
 
 console.log('\nLa setmana comença en dilluns:');
 comprova('un dimarts cau a la seva setmana', '2026-09-07', P.dilluns('2026-09-08'));

@@ -15,222 +15,62 @@ if (!fs.existsSync(dataDir)) {
 const db = new Database(DB_PATH);
 db.pragma('journal_mode = WAL');
 
-db.exec(`
-  -- Qui ets, segons Firebase.
-  --
-  -- Firebase contesta la identitat i emet el uid; aquesta taula guarda el que
-  -- l'app necessita saber de tu i que Firebase no ha de saber. La divisio de
-  -- arquitectura_core.md: Firebase diu **qui ets**, la base de cada app guarda
-  -- **el que es teu**.
-  --
-  -- El uid es unic dins del projecte de Firebase, i com que n'hi ha **un de sol
-  -- per a tot Cronos**, la mateixa persona te el mateix uid aqui i a l'aicamper.
-  --
-  -- El correu hi es per dues raons i cap es tecnica: perque el formulari de Data
-  -- Safety el declara, i perque sense ell una peticio de baixa per correu no es
-  -- pot resoldre sense entrar a Firebase. **No s'indexa res per correu**: un
-  -- compte pot canviar d'adreca i el uid no canvia mai.
-  CREATE TABLE IF NOT EXISTS users (
-    uid TEXT PRIMARY KEY,
-    email TEXT,
-    display_name TEXT,
-    created_at TEXT DEFAULT (datetime('now')),
-    last_seen_at TEXT
-  );
-  CREATE INDEX IF NOT EXISTS idx_users_email ON users (email);
+const esquema = require('./esquema');
+const migracio = require('./migracio');
 
-  CREATE TABLE IF NOT EXISTS user_texts (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    email TEXT NOT NULL,
-    title TEXT NOT NULL,
-    text TEXT NOT NULL,
-    created_at TEXT DEFAULT (datetime('now'))
-  );
-
-  CREATE TABLE IF NOT EXISTS user_progress (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    email TEXT NOT NULL,
-    text_id TEXT NOT NULL,
-    text_title TEXT,
-    level TEXT NOT NULL,
-    score INTEGER,
-    errors_count INTEGER,
-    completed_at TEXT DEFAULT (datetime('now'))
-  );
-
-  -- Fins ara d'un dictat només en quedava un nombre: quants errors. La llista
-  -- d'errors es pintava a la pantalla i es llençava, de manera que l'app no
-  -- podia respondre l'única pregunta que es fa qui vol millorar: de què fallo.
-  -- Aquí es desa cada error, un per fila.
-  --
-  -- La columna "counted" distingeix els errors que compten a l'escala dels que
-  -- només són un avís: si la puntuació no s'ha dictat, no es pot penalitzar el
-  -- que no s'ha pogut sentir, però sí que val la pena guardar-ho per veure el
-  -- patró.
-  -- Avisos sobre el contingut que escriu el model (F64).
-  --
-  -- Google Play tracta les apps que generen contingut amb IA com una àrea
-  -- regulada, i exigeix poder denunciar contingut ofensiu SENSE sortir de
-  -- l'app. A Dictats el model escriu l'explicació de cada error i el missatge
-  -- final, i tots dos es mostren a qui practica.
-  --
-  -- Es desa el text tal com el va veure la persona: si es reescriu el prompt o
-  -- es canvia de model, l'avís ha de seguir dient què es va denunciar.
-  CREATE TABLE IF NOT EXISTS content_reports (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    email TEXT NOT NULL,
-    kind TEXT NOT NULL,          -- 'explicacio' | 'feedback'
-    content TEXT NOT NULL,       -- el text denunciat, literal
-    context TEXT,                -- la paraula i el tipus d'error, si n'hi ha
-    reason TEXT,                 -- el que hi hagi volgut escriure la persona
-    model TEXT,
-    created_at TEXT DEFAULT (datetime('now')),
-    reviewed INTEGER NOT NULL DEFAULT 0
-  );
-
-  CREATE TABLE IF NOT EXISTS user_errors (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    progress_id INTEGER NOT NULL,
-    email TEXT NOT NULL,
-    level TEXT,
-    text_id TEXT,
-    type TEXT NOT NULL,
-    original TEXT,
-    user_wrote TEXT,
-    position INTEGER,
-    counted INTEGER NOT NULL DEFAULT 1,
-    created_at TEXT DEFAULT (datetime('now'))
-  );
-
-  -- Les frases que has fallat tornen (F27).
-  --
-  -- Una fila per frase i persona, no per fallada: si la tornes a fallar es
-  -- reaprofita la que hi ha i torna a baix de tot. Quan l'encertes tres
-  -- vegades seguides (1, 3 i 7 dies) la fila s'esborra: ja no torna.
-  --
-  -- text_id + frase apunten al banc (b3, frase 2) o a un text personal
-  -- (personal_7); el text de la frase NO es desa, es torna a treure d'allà.
-  -- Desar-lo voldria dir que editar un text personal deixaria repassos
-  -- apuntant a una frase que ja no existeix.
-  CREATE TABLE IF NOT EXISTS repesca (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    email TEXT NOT NULL,
-    text_id TEXT NOT NULL,
-    frase INTEGER NOT NULL,
-    passada INTEGER NOT NULL DEFAULT 0,   -- vegades seguides encertada
-    toca_el TEXT NOT NULL,                -- data local 'YYYY-MM-DD'
-    fallades INTEGER NOT NULL DEFAULT 1,
-    creada TEXT DEFAULT (datetime('now')),
-    UNIQUE (email, text_id, frase)
-  );
-  CREATE INDEX IF NOT EXISTS idx_repesca_toca ON repesca (email, toca_el);
-
-  -- Quantes targetes has fet cada dia (F28).
-  --
-  -- Una fila per dia i persona, no per targeta: el detall de cada resposta no
-  -- serveix per a res que no sàpiga ja user_errors, i desar-lo seria guardar
-  -- més del que fa falta. Això només ha de contestar «quantes n'has fet avui»,
-  -- que és el que dona sentit a l'objectiu diari de F34.
-  CREATE TABLE IF NOT EXISTS micro_dies (
-    email TEXT NOT NULL,
-    dia TEXT NOT NULL,               -- data local 'YYYY-MM-DD'
-    targetes INTEGER NOT NULL DEFAULT 0,
-    encerts INTEGER NOT NULL DEFAULT 0,
-    PRIMARY KEY (email, dia)
-  );
-
-  -- Escriptura lliure (F29).
-  --
-  -- Fixeu-vos en el que NO hi ha: no hi ha cap columna amb el text. El que
-  -- escrius no es desa enlloc, com la foto d'un dictat a mà. Aquí només queda
-  -- que ho has fet, de quin tema, quantes paraules i quantes observacions
-  -- van sortir — prou per a un historial i per a la ratxa, i res més.
-  --
-  -- No va a user_progress a posta: allà tot està construït sobre comparar amb
-  -- un original (l'escala, els punts, els errors per 100 paraules). Un text
-  -- lliure no té original, i barrejar-ho trencaria en silenci tres coses.
-  CREATE TABLE IF NOT EXISTS escriptures (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    email TEXT NOT NULL,
-    tema TEXT,
-    paraules INTEGER NOT NULL,
-    observacions INTEGER NOT NULL DEFAULT 0,
-    model TEXT,
-    created_at TEXT DEFAULT (datetime('now'))
-  );
-  CREATE INDEX IF NOT EXISTS idx_escriptures_email ON escriptures (email, created_at);
-
-  CREATE INDEX IF NOT EXISTS idx_user_errors_email ON user_errors (email, created_at);
-  CREATE INDEX IF NOT EXISTS idx_user_errors_type  ON user_errors (email, type);
-  CREATE INDEX IF NOT EXISTS idx_user_progress_email ON user_progress (email, completed_at);
-  -- Els avisos es miren pendents primer: és l'única consulta que en farà ningú.
-  CREATE INDEX IF NOT EXISTS idx_reports_pendents ON content_reports (reviewed, created_at);
-`);
-
-// Migració: el nombre de paraules del dictat. Fa falta per als punts (F45),
-// que valen més com més llarg i més difícil és el text. SQLite no té
-// `ADD COLUMN IF NOT EXISTS`, així que es mira primer.
-//
-// Els dictats anteriors es queden amb NULL i `src/lib/rang.js` els estima per
-// la mitjana del seu nivell: val més una aproximació que no pas que
-// l'historial de qui ja feia servir l'app deixi de comptar de cop.
-function afegeixColumnaSiFalta(taula, columna, definicio) {
-  const columnes = db.prepare(`PRAGMA table_info(${taula})`).all();
-  if (columnes.some((c) => c.name === columna)) return;
-  db.exec(`ALTER TABLE ${taula} ADD COLUMN ${columna} ${definicio}`);
+// L'ordre importa i el va ensenyar una còpia de producció de veritat:
+// `content_reports` conserva el nom i canvia de forma, així que s'ha d'apartar
+// ABANS de crear l'esquema. Si no, el CREATE TABLE IF NOT EXISTS no fa res i el
+// CREATE INDEX sobre una columna que encara no existeix atura l'arrencada.
+// Les tres passes van dins d'UNA transacció. Separades, una còpia que peta
+// deixava les taules noves creades i les velles reanomenades: un estat a mig
+// fer que a la següent arrencada ja no es reconeix. Ho va ensenyar una còpia de
+// producció, i la segona vegada la base local ja estava a mitges.
+db.pragma('foreign_keys = ON');
+let migrat = null;
+db.transaction(() => {
+  migracio.abansDeLEsquema(db);
+  db.exec(esquema.TAULES);
+  migrat = migracio.migra(db);
+})();
+if (migrat) {
+  const quantes = Object.entries(migrat)
+    .filter(([k]) => k !== 'persones')
+    .map(([k, v]) => `${k} ${v}`).join(', ');
+  console.log(`Esquema #36: migrat (${migrat.persones} persones) ${quantes || 'sense files'}.`);
 }
 
-afegeixColumnaSiFalta('user_progress', 'total_words', 'INTEGER');
-
-// Migració: on es desa el que escriu el model (F33).
+// ── Reclassificar l'historial amb el catàleg d'avui (F25) ────
 //
-// Fins ara les explicacions es demanaven a Claude DINS de la petició de
-// correcció i es llençaven en tancar la pantalla. Això costava dues coses:
-// l'usuari esperava uns segons amb un spinner mut per a una part del resultat
-// que ja estava calculada, i el mateix error tornava a costar diners cada
-// vegada que es volia tornar a veure.
+// `taxonomia.classifica` és una funció pura de (esperat, escrit), així que les
+// files que ja hi ha es poden tornar a mirar. **I s'ha de fer**: sense això,
+// «de què falles» diria «14 errors d'ortografia» de tot el passat, que és
+// precisament la resposta que no serveix.
 //
-// Desant-les, la segona crida a `/api/explicacions/:id` no torna a demanar res
-// a l'API: és idempotent i gratis. També és el primer graó de F30, que vol un
-// catàleg de fitxes de regla en comptes de text redactat de nou cada cop.
-afegeixColumnaSiFalta('user_errors', 'explanation', 'TEXT');
-afegeixColumnaSiFalta('user_errors', 'generada', 'INTEGER NOT NULL DEFAULT 0');
-afegeixColumnaSiFalta('user_progress', 'feedback', 'TEXT');
-afegeixColumnaSiFalta('user_progress', 'feedback_generat', 'INTEGER NOT NULL DEFAULT 0');
-
-// Migració: les categories de F25.
-//
-// Els sis tipus d'abans descrivien una diferència, no una regla: «ortografia»
-// s'emportava la ela geminada, la ce trencada i la b/v, i «accentuació»
-// s'emportava els diacrítics i la dièresi.
-//
-// Com que `taxonomia.classifica` és una funció pura de (original, escrit), les
-// files que ja hi ha es poden tornar a classificar. **I s'ha de fer**: sense
-// això, F26 («on falles») diria «14 errors d'ortografia» de tot l'historial
-// anterior, que és precisament la resposta que no serveix.
-//
-// La columna `taxonomia` és el número de versió del catàleg; només es toquen
-// les files que en porten una d'anterior, així que passar-hi dues vegades no fa
+// `taxonomy_version` és el número de versió del catàleg; només es toquen les
+// files que en porten una d'anterior, així que passar-hi dues vegades no fa
 // res. El que NO es pot recuperar és `per/per a`: depèn de la paraula del
 // costat i les files no la desen.
-afegeixColumnaSiFalta('user_errors', 'taxonomia', 'INTEGER NOT NULL DEFAULT 0');
-
 function reclassifica() {
   const taxonomia = require('./taxonomia');
   const pendents = db.prepare(
-    'SELECT id, original, user_wrote FROM user_errors WHERE taxonomia < ?'
+    'SELECT id, expected, written FROM dictation_errors WHERE taxonomy_version < ?'
   ).all(taxonomia.VERSIO);
   if (pendents.length === 0) return;
 
-  const actualitza = db.prepare('UPDATE user_errors SET type = ?, taxonomia = ? WHERE id = ?');
+  const actualitza = db.prepare(
+    'UPDATE dictation_errors SET type = ?, taxonomy_version = ? WHERE id = ?'
+  );
   const totes = db.transaction((files) => {
     for (const f of files) {
-      actualitza.run(taxonomia.classifica(f.original, f.user_wrote), taxonomia.VERSIO, f.id);
+      actualitza.run(taxonomia.classifica(f.expected, f.written), taxonomia.VERSIO, f.id);
     }
   });
   totes(pendents);
   console.log(`Taxonomia F25: ${pendents.length} errors reclassificats.`);
 }
 reclassifica();
+
+db.adopta = (uid, email) => migracio.adopta(db, uid, email);
 
 module.exports = db;

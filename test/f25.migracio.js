@@ -42,9 +42,14 @@ try {
   // Historial com el que hi havia abans de F25: els sis tipus d'abans, i sense
   // versió de catàleg.
   const bd = new Database(BD);
-  const posa = bd.prepare(`INSERT INTO user_errors
-    (progress_id, email, type, original, user_wrote, position, taxonomia)
-    VALUES (1, 'algu@exemple.cat', ?, ?, ?, 0, 0)`);
+  // La persona i el dictat han d'existir: des de la #36 els errors hi apunten
+  // amb claus alienes.
+  bd.prepare("INSERT OR IGNORE INTO users (uid, email) VALUES ('algu-uid', 'algu@exemple.cat')").run();
+  bd.prepare(`INSERT INTO dictations (id, uid, text_id, level, error_count)
+              VALUES (1, 'algu-uid', 'b1', 'basic', 9)`).run();
+  const posa = bd.prepare(`INSERT INTO dictation_errors
+    (dictation_id, uid, type, expected, written, position, taxonomy_version)
+    VALUES (1, 'algu-uid', ?, ?, ?, 0, 0)`);
   const vells = [
     ['ortografia', 'col·legi', 'collegi', 'ela geminada'],
     ['ortografia', 'força', 'forsa', 'ç'],
@@ -61,23 +66,23 @@ try {
 
   console.log('L\'historial que ja hi havia:');
   const db = arrenca();
-  const files = db.prepare('SELECT type, original, taxonomia FROM user_errors ORDER BY id').all();
+  const files = db.prepare('SELECT type, expected AS original, taxonomy_version AS taxonomia FROM dictation_errors ORDER BY id').all();
   comprova('cada error passa a la seva regla', vells.map(v => v[3]), files.map(f => f.type));
   comprova('i queda marcat amb la versió del catàleg', 9,
     files.filter(f => f.taxonomia === T.VERSIO).length);
 
   console.log('\nI no es torna a fer:');
-  db.prepare("UPDATE user_errors SET type = 'tocat' WHERE original = 'força'").run();
+  db.prepare("UPDATE dictation_errors SET type = 'tocat' WHERE expected = 'força'").run();
   arrenca();
   comprova('les files ja marcades no es tornen a mirar', 'tocat',
-    db.prepare("SELECT type FROM user_errors WHERE original = 'força'").get().type);
+    db.prepare("SELECT type FROM dictation_errors WHERE expected = 'força'").get().type);
 
   console.log('\nEls errors nous ja neixen classificats:');
-  db.prepare(`INSERT INTO user_errors (progress_id, email, type, original, user_wrote, position, taxonomia)
-              VALUES (2, 'algu@exemple.cat', 'h', 'hora', 'ora', 0, ?)`).run(T.VERSIO);
+  db.prepare(`INSERT INTO dictation_errors (dictation_id, uid, type, expected, written, position, taxonomy_version)
+              VALUES (1, 'algu-uid', 'h', 'hora', 'ora', 0, ?)`).run(T.VERSIO);
   arrenca();
   comprova('una fila amb la versió posada no es toca', { type: 'h', taxonomia: T.VERSIO },
-    db.prepare("SELECT type, taxonomia FROM user_errors WHERE original = 'hora'").get());
+    db.prepare("SELECT type, taxonomy_version AS taxonomia FROM dictation_errors WHERE expected = 'hora'").get());
 
   console.log(falles === 0
     ? '\nL\'historial parla el mateix idioma que els errors nous\n'

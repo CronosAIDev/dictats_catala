@@ -9,7 +9,7 @@ function comprova(nom, esperat, obtingut) {
   console.log(`  ${ok ? 'OK   ' : 'FALLA'}  ${nom}`);
   if (!ok) console.log(`         esperat ${JSON.stringify(esperat)}, obtingut ${JSON.stringify(obtingut)}`);
 }
-const f = (id, type, original, user_wrote) => ({ id, type, original, user_wrote });
+const f = (id, type, expected, written) => ({ id, type, expected, written });
 
 console.log('\nQuins errors poden ser targeta:');
 comprova('una substitució, sí', true, M.potSerTargeta(f(1, 'diacrítics', 'és', 'es')));

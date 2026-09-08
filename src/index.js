@@ -7,7 +7,7 @@ const path = require('path');
 const authRoutes = require('./routes/auth');
 const dictatsRoutes = require('./routes/dictats');
 const requireAuth = require('./middleware/requireAuth');
-const { comprovaAArrencada } = require('./lib/authBypass');
+const { comprovaAArrencada, bypassActiu, PERFIL_DE_PROVES } = require('./lib/authBypass');
 const config = require('./lib/comprovacions');
 
 const app = express();
@@ -111,6 +111,17 @@ app.use((req, res) => res.status(404).json({ error: 'No trobat' }));
 comprovaAArrencada();
 
 config.comprovaAArrencada();
+
+// Amb el bypass, la persona de proves ha de tenir la seva fila com qualsevol
+// altra: des de la #36 tot penja de `users` amb una clau aliena. Si no hi fos,
+// els dictats es desarien... o més aviat no, i en silenci —`desa()` es menja
+// l'error de BD—, i el camí de desenvolupament provaria una cosa que a
+// producció no passa.
+if (bypassActiu()) {
+  const db = require('./lib/db');
+  const p = PERFIL_DE_PROVES;
+  db.prepare('INSERT OR IGNORE INTO users (uid, email) VALUES (?, ?)').run(p.uid, p.email);
+}
 app.listen(PORT, () => {
   console.log(`Dictats en català escoltant a http://localhost:${PORT}`);
 });

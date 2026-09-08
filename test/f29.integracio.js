@@ -73,12 +73,12 @@ const paraules = n => Array.from({ length: n }, (_, i) => 'mot' + i).join(' ');
 
     console.log('\nNo es desa res del que s\'ha escrit:');
     const bd = new Database(BD);
-    const columnes = bd.prepare('PRAGMA table_info(escriptures)').all().map(c => c.name);
+    const columnes = bd.prepare('PRAGMA table_info(writings)').all().map(c => c.name);
     comprova('la taula existeix', true, columnes.length > 0);
     // El que importa: que no hi hagi on desar el text.
     comprova('i no té cap columna de text', [], columnes.filter(c => /text|contingut|body/i.test(c)));
     comprova('cap fila, perquè no s\'ha corregit res', 0,
-      bd.prepare('SELECT COUNT(*) n FROM escriptures').get().n);
+      bd.prepare('SELECT COUNT(*) n FROM writings').get().n);
     bd.close();
 
     console.log(falles === 0

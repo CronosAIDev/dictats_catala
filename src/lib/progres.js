@@ -53,13 +53,13 @@ function sumaSetmana(files) {
     if (!per.has(clau)) per.set(clau, { dictats: 0, comptats: 0, errors: 0, paraules: 0, errorsTotals: 0 });
     const s = per.get(clau);
     s.dictats += 1;
-    s.errorsTotals += Number(f.errors_count) || 0;
+    s.errorsTotals += Number(f.error_count) || 0;
     // Només compten per a la taxa els dictats que saben quantes paraules
     // tenien. La resta segueixen comptant com a dictats fets.
-    if (f.total_words > 0) {
+    if (f.word_count > 0) {
       s.comptats += 1;
-      s.errors += Number(f.errors_count) || 0;
-      s.paraules += Number(f.total_words) || 0;
+      s.errors += Number(f.error_count) || 0;
+      s.paraules += Number(f.word_count) || 0;
     }
   }
   return per;
@@ -117,11 +117,11 @@ function resum(files) {
   }
   let errorsTotals = 0, errors = 0, paraules = 0, comptats = 0;
   for (const f of tots) {
-    errorsTotals += Number(f.errors_count) || 0;
-    if (f.total_words > 0) {
+    errorsTotals += Number(f.error_count) || 0;
+    if (f.word_count > 0) {
       comptats += 1;
-      errors += Number(f.errors_count) || 0;
-      paraules += Number(f.total_words) || 0;
+      errors += Number(f.error_count) || 0;
+      paraules += Number(f.word_count) || 0;
     }
   }
   return {
