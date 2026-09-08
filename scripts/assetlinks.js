@@ -19,7 +19,7 @@ const path = require('path');
 
 // L'`applicationId` es congela per sempre amb el primer AAB (trampa 3). La
 // recomanació i les alternatives són a docs/sections/publicacio/FITXA_PLAY.md.
-const PAQUET = process.env.TWA_PACKAGE || 'io.generaive.dictats';
+const PAQUET = process.env.TWA_PACKAGE || 'com.usecronos.dictats';
 const DESTI = path.join(__dirname, '../public/.well-known/assetlinks.json');
 
 const FORMA = /^([0-9A-F]{2}:){31}[0-9A-F]{2}$/i;   // 32 bytes en hexadecimal separats per dos punts
@@ -69,4 +69,4 @@ console.log(`\n  Escrit ${path.relative(process.cwd(), DESTI)}`);
 console.log(`  Paquet: ${PAQUET}`);
 console.log(`  Empremtes: ${empremtes.length}\n`);
 console.log('  Un cop desplegat, comprova que se serveix SENSE sessió:');
-console.log('    curl -s https://dictation.generaive.io/.well-known/assetlinks.json\n');
+console.log('    curl -s https://dictats.usecronos.com/.well-known/assetlinks.json\n');
