@@ -23,14 +23,23 @@
     return n === 1 ? '1 error' : n + ' errors';
   }
 
-  /** El que se sap d'aquest text. Cadena buida si encara no s'ha fet. */
+  /**
+   * El que se sap d'aquest text. Cadena buida si encara no s'ha fet.
+   *
+   * Un dictat on falta més de la meitat del text **no compta com a intent**:
+   * no es va fer, es va parar. No s'amaga —es diu «Començat»— però no es
+   * compara amb els que sí que es van fer, perquè si no la llista acabava
+   * dient «el millor amb 23 errors» d'un text de 26 paraules.
+   */
   function historia(t) {
     if (!t || !t.fet) return '';
+    // Obert però mai acabat. Sense nombre, perquè no n'hi ha cap de comparable.
+    if (t.intents === 0) return t.vegades <= 1 ? 'Començat' : 'Començat ' + t.vegades + ' cops';
     const millor = t.millorErrors;
     if (millor === null || millor === undefined) return 'Fet';
-    // Amb una sola passada no hi ha «millor» que valgui: és l'única.
-    if (t.vegades <= 1) return 'Fet, ' + errors(millor);
-    return 'Fet ' + t.vegades + ' cops, el millor ' +
+    // Amb un sol intent no hi ha «millor» que valgui: és l'únic.
+    if (t.intents <= 1) return 'Fet, ' + errors(millor);
+    return 'Fet ' + t.intents + ' cops, el millor ' +
       (millor === 0 ? 'sense cap error' : 'amb ' + errors(millor));
   }
 
@@ -52,7 +61,12 @@
   function marques(t, ctx) {
     const parts = [];
     const h = historia(t);
-    if (h) parts.push('<span class="text-fet"><span aria-hidden="true">✓</span> ' + h + '</span>');
+    if (h) {
+      // El tic és per al que has acabat. Posar-lo a «Començat» seria dir que
+      // està fet, i el que hi diu al costat és justament que no.
+      const tic = t.intents > 0 ? '<span aria-hidden="true">✓</span> ' : '';
+      parts.push('<span class="text-fet">' + tic + h + '</span>');
+    }
     const i = insignia(t, ctx);
     if (i) parts.push(i);
     return parts.length ? '<div class="text-marques">' + parts.join('') + '</div>' : '';

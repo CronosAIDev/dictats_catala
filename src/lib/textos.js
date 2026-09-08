@@ -16,8 +16,11 @@
  * Ajunta cada text amb el que se'n sap de qui l'està mirant.
  *
  * @param {Array} llista     Els textos del nivell, en l'ordre del banc.
- * @param {Array} historial  Files `{text_id, vegades, millor, ultima}`.
- * @returns {Array} La mateixa llista, amb `fet`, `vegades`, `millorErrors` i `ultima`.
+ * @param {Array} historial  Files `{text_id, vegades, intents, millor, ultima}`.
+ *                            `vegades` és quants cops s'ha obert; `intents`,
+ *                            quants d'aquells es van arribar a fer.
+ * @returns {Array} La mateixa llista, amb `fet`, `vegades`, `intents`,
+ *                  `millorErrors` i `ultima`.
  */
 function marca(llista, historial) {
   const per = new Map();
@@ -25,11 +28,15 @@ function marca(llista, historial) {
 
   return (llista || []).map((t) => {
     const h = per.get(String(t.id));
-    if (!h) return { ...t, fet: false, vegades: 0, millorErrors: null, ultima: null };
+    if (!h) return { ...t, fet: false, vegades: 0, intents: 0, millorErrors: null, ultima: null };
     return {
       ...t,
       fet: true,
       vegades: h.vegades || 0,
+      // Els que es van arribar a fer. Si `intents` no ve —historial vell o
+      // una crida que no el passa— val el mateix que `vegades`: val més
+      // comptar-los com a intents que no pas dir «Començat» de tot.
+      intents: h.intents === undefined || h.intents === null ? (h.vegades || 0) : Number(h.intents),
       // `millor` és el mínim d'errors, no l'últim: qui repeteix un text vol
       // veure el seu sostre, no l'últim ensopec.
       millorErrors: h.millor === null || h.millor === undefined ? null : Number(h.millor),

@@ -93,6 +93,20 @@ const CATEGORIES = [
 // tornarien a classificar a CADA arrencada, per sempre.
 const VERSIO = 2;
 
+// ── El que no és una regla ───────────────────────────────────
+//
+// Tres categories del catàleg no són cap regla que es pugui estudiar: no haver
+// escrit una paraula, haver-ne escrit una de més, i haver-ne escrit una que no
+// era la del dictat. No tenen fitxa possible i no es poden practicar.
+//
+// Viu aquí i no a qui ho fa servir perquè **ja ha calgut tres vegades**: al
+// resultat del dictat, al perfil i a la llista de textos. Tres còpies d'aquesta
+// llista voldria dir que un dia divergeixen i les pantalles es contradiuen.
+const NO_SON_REGLA = new Set(['paraula omesa', 'paraula afegida', 'paraula incorrecta']);
+
+/** Si aquest tipus d'error és una regla que es pugui estudiar. */
+const esRegla = (tipus) => !NO_SON_REGLA.has(tipus);
+
 const PER_ID = new Map(CATEGORIES.map((c) => [c.id, c]));
 const regla = (id) => (PER_ID.get(id) || {}).regla || '';
 const nom = (id) => (PER_ID.get(id) || {}).nom || id;
@@ -270,4 +284,4 @@ function comptaPerA(paraules) {
   return n;
 }
 
-module.exports = { CATEGORIES, VERSIO, classifica, regla, nom, comptaPerA, DIACRITICS };
+module.exports = { CATEGORIES, VERSIO, NO_SON_REGLA, esRegla, classifica, regla, nom, comptaPerA, DIACRITICS };
