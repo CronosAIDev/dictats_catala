@@ -166,10 +166,26 @@ router.post('/user-texts', requireAuth, (req, res) => {
   res.json({ ok: true, id: result.lastInsertRowid });
 });
 
+/**
+ * Esborrar un text propi, i el que hi penja.
+ *
+ * Els repassos apunten al text amb `text_id` (`personal_7`) i **no desen la
+ * frase**: es torna a treure del banc cada vegada, per no deixar repassos
+ * apuntant a un text que s'ha editat. La conseqüència és que un text esborrat
+ * deixa repassos que **no es poden resoldre mai**: la sessió se'ls salta bé
+ * —no peta res— però es queden per sempre (F75).
+ *
+ * No hi ha clau aliena que ho faci sol perquè `text_id` també apunta al banc,
+ * que no és cap taula. Així que es fa aquí, i en la mateixa transacció: un
+ * text esborrat a mitges seria pitjor que no esborrar-lo.
+ */
 router.delete('/user-texts/:id', requireAuth, (req, res) => {
-  db.prepare(
-    'DELETE FROM custom_texts WHERE id = ? AND uid = ?'
-  ).run(req.params.id, req.session.profile.uid);
+  const uid = req.session.profile.uid;
+  const textId = 'personal_' + String(req.params.id);
+  db.transaction(() => {
+    db.prepare('DELETE FROM custom_texts WHERE id = ? AND uid = ?').run(req.params.id, uid);
+    db.prepare('DELETE FROM phrase_reviews WHERE uid = ? AND text_id = ?').run(uid, textId);
+  })();
   res.json({ ok: true });
 });
 
