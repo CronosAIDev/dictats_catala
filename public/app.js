@@ -222,7 +222,7 @@ function updateCorrectBtn() {
     : !state.dictationDone;
 }
 
-function onPhotoSelected(e) {
+async function onPhotoSelected(e) {
   const file = e.target.files[0];
   if (!file) return;
   state.photoFile = file;
@@ -233,6 +233,20 @@ function onPhotoSelected(e) {
     $('photo-preview-wrap').style.display = '';
   };
   reader.readAsDataURL(file);
+
+  // Una foto negra no es corregeix: costaria una crida al model i tornaria una
+  // transcripció inventada que se li ensenyaria a la persona com si fossin
+  // faltes seves. Veure `public/foto.js`.
+  const avis = $('photo-avis');
+  const q = window.Foto ? await window.Foto.mira(file) : { ok: true };
+  if (!q.ok) {
+    // Aquí la foto és opcional, així que no es bloqueja res: simplement no
+    // s'adjunta. Deixar-la posada voldria dir enviar-la en corregir.
+    removePhoto();
+    if (avis) { avis.textContent = window.Foto.QUE_FER; avis.style.display = ''; }
+    return;
+  }
+  if (avis) { avis.textContent = ''; avis.style.display = 'none'; }
   updateCorrectBtn();
 }
 
