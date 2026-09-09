@@ -17,6 +17,12 @@ class UtteranceFalsa {
 
 const veu = {
   pausada: false,
+  // Els navegadors avisen amb `voiceschanged` quan les veus acaben d'arribar.
+  // El doble ho ha de poder fer o no es pot provar el cas d'iPhone.
+  oients: [],
+  addEventListener(nom, f) { if (nom === 'voiceschanged') this.oients.push(f); },
+  removeEventListener(nom, f) { this.oients = this.oients.filter((x) => x !== f); },
+  avisaQueJaHiSon() { this.oients.slice().forEach((f) => f()); },
   cancel() { acabaAra = null; },          // deliberadament NO toca `pausada`
   pause() { this.pausada = true; },
   resume() { this.pausada = false; },
@@ -26,6 +32,8 @@ const veu = {
     acabaAra = this.pausada ? null : () => u.onend && u.onend();
   },
 };
+
+const VEUS_DE_VERITAT = () => [{ lang: 'ca-ES', name: 'Catalana' }];
 
 global.window = global;
 global.speechSynthesis = veu;
@@ -146,23 +154,27 @@ console.log('\nRegressió — l\'última frase acaba mentre està pausat:');
   comprova('progrés al 100 %', 100, caixa.info.progres);
 }
 
-console.log('\nSense cap veu instal·lada, el dictat NO es dona per fet:');
+// ── Les veus que arriben tard (Safari d'iPhone) ───────────────
+//
+// `getVoices()` torna una llista buida fins que el navegador les té
+// carregades, i a iOS això passa més tard que a Chrome. Preguntar-ho de cop
+// feia que un aparell que **sí** que té veu digués que no en té: l'avís més
+// contundent de l'app, i seria fals.
+console.log('\nSi les veus arriben tard, s\'espera en comptes de dir que no n\'hi ha:');
 {
-  // El cas d'en Gerard: un Linux sense síntesi de veu. Abans, `speak()` acabava
-  // a l'instant, les cinc frases passaven en un sospir i la pantalla deia
-  // «Dictat completat» amb la barra al 100 % sense haver sonat res.
-  const abans = veu.getVoices;
-  veu.getVoices = () => [];
-  const vist = [];
-  const motor = new Dictat.MotorDictat((info) => vist.push(info));
-  motor.carrega(['Una frase.', 'Una altra.', 'I una tercera.']);
+  veu.getVoices = () => [];                       // encara no han carregat
+  const motor = new Dictat.MotorDictat(() => {});
+  motor.carrega(['Una frase.', 'Una altra.']);
   const ditsAbans = dit.length;
   motor.inicia();
-  comprova('no arriba a dir res', ditsAbans, dit.length);
-  comprova('l\'estat ho diu', 'sense-veu', motor.estat);
-  comprova('i no diu «fet» enlloc', false, vist.some(i => i.estat === 'fet'));
-  comprova('el progrés es queda a zero, no al 100 %', 0, vist[vist.length - 1].progres);
-  veu.getVoices = abans;
+  comprova('de moment no diu res, i tampoc es rendeix', true,
+    dit.length === ditsAbans && motor.estat !== 'sense-veu');
+
+  veu.getVoices = VEUS_DE_VERITAT;                // ja han arribat
+  veu.avisaQueJaHiSon();
+  comprova('quan arriben, es posa a llegir', true, dit.length > ditsAbans);
+  comprova('i no ha caigut a «sense veu»', false, motor.estat === 'sense-veu');
+  motor.atura && motor.atura();
 }
 
 console.log('\nI amb veu, tot segueix igual:');
@@ -173,5 +185,32 @@ console.log('\nI amb veu, tot segueix igual:');
   comprova('arrenca llegint', 'llegint', motor.estat);
 }
 
-console.log(falles ? `\n${falles} FALLES` : '\nTotes les proves del motor passen');
-process.exitCode = falles ? 1 : 0;
+console.log('\nSense cap veu instal·lada, el dictat NO es dona per fet:');
+{
+  // El cas d'en Gerard: un Linux sense síntesi de veu. Abans, `speak()` acabava
+  // a l'instant, les cinc frases passaven en un sospir i la pantalla deia
+  // «Dictat completat» amb la barra al 100 % sense haver sonat res.
+  //
+  // Va al final perquè la decisió ara és asíncrona: primer es mira si les veus
+  // arriben tard, i només després es diu que no n'hi ha. Deixar-lo al mig feia
+  // que el seu rellotge s'acabés quan un altre bloc ja havia tornat a posar-hi
+  // veus, i comprovava una cosa diferent de la que deia.
+  veu.getVoices = () => [];
+  const vist = [];
+  const motor = new Dictat.MotorDictat((info) => vist.push(info));
+  motor.carrega(['Una frase.', 'Una altra.', 'I una tercera.']);
+  const ditsAbans = dit.length;
+  motor.inicia();
+  comprova('no arriba a dir res', ditsAbans, dit.length);
+
+  setTimeout(() => {
+    comprova('passat el temps d\'espera, l\'estat ho diu', 'sense-veu', motor.estat);
+    comprova('i no diu «fet» enlloc', false, vist.some(i => i.estat === 'fet'));
+    comprova('el progrés es queda a zero, no al 100 %', 0, vist[vist.length - 1].progres);
+    veu.getVoices = VEUS_DE_VERITAT;
+
+    console.log(falles ? `\n${falles} FALLES` : '\nTotes les proves del motor passen');
+    process.exitCode = falles ? 1 : 0;
+  }, 1300);
+}
+
