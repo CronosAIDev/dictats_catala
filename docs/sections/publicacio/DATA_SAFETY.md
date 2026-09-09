@@ -7,36 +7,40 @@
 > mentir-hi és motiu de retirada. Per això **tot el que hi ha aquí surt d'auditar el codi**,
 > amb el fitxer i la línia al costat, no de suposar-lo.
 
-> ## ⚠️ Llegeix això abans d'omplir el formulari (4-09-2026)
+> ## ✅ Les files d'identitat ja estan verificades (08-09-2026)
 >
-> Aquest document es va escriure auditant la **Fase 0** (identitat pròpia amb bcrypt i
-> Google OAuth), que viu a la branca `v10` i **no és a producció**. La Fase 0 es refà amb
-> **Firebase Auth** (decisió del 4-09, issue #16), així que **les files d'identitat d'aquí
-> descriuen un sistema que encara no existeix**:
+> Aquest document es va escriure el 04-09 auditant la **Fase 0** de la branca `v10`
+> —identitat pròpia amb bcrypt i Google OAuth— que **no es va desplegar mai**. Aquell avís
+> deia que les tres files d'identitat descrivien un sistema inexistent.
 >
-> | Fila | Diu | Què passa avui a producció |
+> **Ja no.** El 08-09 va entrar **Firebase Authentication** i està a producció: les files
+> d'aquí descriuen el codi que hi corre, i s'han comprovat obrint un compte de veritat,
+> fent un dictat i esborrant-lo.
+>
+> El que ha canviat respecte d'aquella versió:
+>
+> | Fila | Deia | Diu ara |
 > |---|---|---|
-> | Contrasenya | Hash de bcrypt de 12 rondes | Dictats **no en desa cap**: comprova el compte contra el sistema de comptes compartit amb els altres serveis del responsable |
-> | `google_id` | S'hi desa | **No existeix**: no hi ha Google OAuth |
-> | Esborrat de dades | `DELETE /api/account` i `/esborrar-compte` | **Cap de les dues rutes existeix**; s'esborra escrivint al responsable |
+> | Contrasenya | Hash de bcrypt a MySQL | **Dictats no en desa cap ni la veu mai**: la comprova Firebase |
+> | `google_id` | S'hi desa | **No existeix.** Google Sign-In encara no està activat |
+> | Esborrat de dades | Dues rutes que no existien | **`DELETE /api/account` i el botó del perfil, tots dos funcionant** |
 >
-> La resta —dictats, errors, textos, fotos, avisos d'IA, galeta, preferències— **sí que està
-> verificada contra el codi de producció**, i és el gruix del formulari.
->
-> **Aquestes tres files s'han de reescriure quan Firebase entri, i abans d'enviar la fitxa.**
-> La política pública (`/privacitat`) ja diu el que el codi fa avui, no el que dirà.
+> La resta —dictats, errors, textos, fotos, avisos d'IA, galeta, preferències— ja estava
+> verificada contra producció i segueix igual.
 
 ## 0. Auditoria: què toca el codi, de veritat
 
 | Dada | On va a parar | Comprovat a |
 |---|---|---|
-| Correu i nom | MySQL `dictats_usuarios` | `src/lib/usuaris.js` |
-| Contrasenya | MySQL, **hash de bcrypt** de 12 rondes. No es pot revertir | `src/lib/usuaris.js` |
-| `google_id` | MySQL. De Google només se'n rep `sub`, `email` i `name` | `src/lib/googleOAuth.js` |
-| Text del dictat, puntuació, errors | SQLite `user_progress` i `user_errors` | `src/lib/db.js:27,47` |
-| Textos personals | SQLite `user_texts` | `src/lib/db.js:19` |
+| **Contrasenya** | **A Firebase (Google). Dictats no la veu mai** ni la desa enlloc | `src/lib/firebase.js`, `public/identitat.js` |
+| Correu i identificador (`uid`) | SQLite `users`. El correu **només aquí** | `src/lib/esquema.js` |
+| `google_id` | **No existeix.** Google Sign-In encara no està activat | — |
+| Text del dictat, puntuació, errors | SQLite `dictations` i `dictation_errors` | `src/lib/esquema.js` |
+| Textos personals | SQLite `custom_texts` | `src/lib/esquema.js` |
+| Frases per repassar i targetes fetes | SQLite `phrase_reviews` i `daily_cards` | `src/lib/esquema.js` |
+| Escriptura lliure | SQLite `writings` — **sense cap columna amb el text** | `src/lib/esquema.js` |
 | **Foto d'un dictat a mà** | **Enlloc.** `multer.memoryStorage()`: viu a memòria mentre dura la petició | `src/routes/dictats.js:12` |
-| Avisos sobre contingut d'IA | SQLite `content_reports`: text denunciat, motiu, correu, model | `src/lib/db.js` |
+| Avisos sobre contingut d'IA | SQLite `content_reports`: text denunciat, motiu, `uid`, model | `src/lib/esquema.js` |
 | Galeta de sessió | Navegador, `httpOnly`, 8 h | `src/index.js` |
 | Preferències i esborrany | `localStorage` i `sessionStorage` del navegador. **No surten mai del dispositiu** | `public/app.js`, `public/mobile.html` |
 
@@ -223,3 +227,40 @@ determina si hi ha dues setmanes d'espera o no.
 - [Understanding Google Play's AI-Generated Content policy](https://support.google.com/googleplay/android-developer/answer/14094294)
 - [Declaring AI-generated content in Play Console](https://support.google.com/googleplay/android-developer/answer/17262077)
 - [Understanding Google Play's app account deletion requirements](https://support.google.com/googleplay/android-developer/answer/13327111)
+
+
+---
+
+## Identitat: què fa Google i què fem nosaltres (08-09-2026)
+
+Des que la identitat és **Firebase Authentication**, hi ha un tercer al formulari que abans
+no hi era. Això és el que el revisor ha de poder llegir sense ambigüitat:
+
+| | |
+|---|---|
+| **Qui comprova la contrasenya** | Firebase (Google). **Dictats no la rep, no la veu i no la desa** |
+| **Què rep Dictats** | Un `uid` i el correu, dins d'un token signat que es comprova al servidor |
+| **Recuperar la contrasenya** | El correu l'envia Google, no nosaltres |
+| **On és el projecte** | `kairos-family-app`, compartit per totes les apps de Cronos |
+| **Transferència internacional** | Sí: Google és als Estats Units. Declarada a `/privacitat` |
+| **Proveïdors actius** | Correu i contrasenya. **Google Sign-In encara no** |
+
+### Esborrar el compte — el que Play exigeix, i com es fa
+
+**Existeix i funciona**, comprovat a producció el 08-09:
+
+1. Al perfil, «Esborrar el compte». Demana la contrasenya, perquè és l'única acció que no
+   es pot desfer.
+2. S'esborra **primer el que és nostre** i després el compte de Firebase. L'ordre no és
+   casual: al revés, si fallés el segon pas quedarien dades sense ningú que les reclami.
+3. Les taules pengen de `users` amb `ON DELETE CASCADE`, així que la baixa **la garanteix
+   el motor de la base**, no una llista que algú hagi de recordar actualitzar.
+
+Verificat: **0 files a les vuit taules** i el compte de Firebase deixa d'existir.
+
+### Una cosa que ha de constar
+
+L'alta és **oberta** des del 08-09: qualsevol pot fer-se un compte amb un correu i una
+contrasenya, i **el correu no es verifica**. Si a la fitxa es declara verificació de correu,
+avui seria fals. Està obert a la
+[#37](https://github.com/CronosAIDev/wiki-cronos/issues/37).

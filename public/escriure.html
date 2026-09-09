@@ -73,9 +73,14 @@
       </div>
 
       <!-- Esperant -->
-      <div id="esc-carregant" style="display:none;text-align:center;padding:48px;color:var(--text-muted)">
-        <div class="spinner" style="margin:0 auto 12px"></div>
-        Llegint el que has escrit…
+      <div id="esc-carregant" style="display:none;text-align:center;padding:48px;color:var(--text-muted)"
+           role="status" aria-live="polite">
+        <div class="spinner" style="margin:0 auto 12px" aria-hidden="true"></div>
+        <div>Llegint el que has escrit…</div>
+        <!-- Apareix quan l'espera es fa llarga. No és una barra de progrés: no
+             hi ha res a mesurar, i inventar-se un percentatge seria mentir. Diu
+             el que passa perquè no sembli que s'ha penjat. -->
+        <div id="esc-paciencia" style="margin-top:10px;font-size:0.9em;display:none"></div>
       </div>
 
       <!-- Resultat -->
@@ -152,9 +157,28 @@
     }
     $('esc-text').addEventListener('input', compta);
 
+    // Corregir un text lliure triga uns deu segons: aquí el model fa tota la
+    // feina, a diferència del dictat, on la comparació ja està calculada abans
+    // de demanar-li res. Amb un sol missatge fix, deu segons es llegeixen com
+    // «s'ha penjat».
+    let esperant = null;
+    function comencaEspera() {
+      const p = $('esc-paciencia');
+      p.style.display = 'none';
+      p.textContent = '';
+      clearTimeout(esperant);
+      esperant = setTimeout(() => {
+        p.textContent = 'Triga uns segons: està llegint el text sencer i buscant '
+          + 'què es pot dir de cada frase.';
+        p.style.display = '';
+      }, 4000);
+    }
+    function acabaEspera() { clearTimeout(esperant); $('esc-paciencia').style.display = 'none'; }
+
     async function corregeix() {
       $('esc-escriure').style.display = 'none';
       $('esc-carregant').style.display = '';
+      comencaEspera();
       let d;
       try {
         const res = await fetch('/api/escriure', {
@@ -162,15 +186,17 @@
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ tema: tema.id, text: $('esc-text').value }),
         });
-        if (res.status === 401) return (window.location.href = '/login');
+        if (res.status === 401) { acabaEspera(); return (window.location.href = '/login'); }
         d = await res.json();
         if (!res.ok) throw new Error(d.error || 'No s\'ha pogut corregir.');
       } catch (e) {
+        acabaEspera();
         $('esc-carregant').style.display = 'none';
         $('esc-escriure').style.display = '';
         $('esc-avis').textContent = e.message;
         return;
       }
+      acabaEspera();
       $('esc-carregant').style.display = 'none';
       $('esc-resum').textContent = d.resum || '';
       $('esc-comentari').textContent = d.comentari || '';

@@ -1,5 +1,87 @@
 # Changelog — dictats_catala
 
+## [2.0.0] — 2026-09-09 — v15…v41: la app deja de medir dictados y entrena gramática
+
+Dieciocho ramas entre el 07 y el 09-09. Es **2.0.0 y no 1.4.0** por una razón concreta:
+**quien ya tenía cuenta tiene que volver a darse de alta.** La identidad dejó de ser la
+tabla de usuarios de Trawlingweb y pasó a Firebase; el dominio cambió; y el esquema de la
+base se reescribió entero. Nada de eso rompe datos —el historial se recupera con el mismo
+correo— pero sí rompe la forma de entrar, y eso es una mayor.
+
+Lo que une estas ramas es el objetivo que ordenaba el roadmap: **que la app dejara de
+medir dictados y pasara a entrenar gramática.** Antes cada dictado era un episodio suelto
+que se corregía, dejaba un número y no volvía a influir en nada.
+
+### Añadido — el bloque que cambia lo que la app es
+
+- **Taxonomía de 20 categorías de error** (F25, luego 22 con F71). Las seis de antes
+  describían **una diferencia, no una regla**: «ortografía» se llevaba la ela geminada, la
+  ce trencada y la b/v juntas. Se clasifica **con un algoritmo, no con el modelo**, por la
+  misma razón que el diff: reproducible, sin depender de la API y **aplicable al
+  histórico**. Recall 100 % (850/850) y 0 falsos positivos.
+- **«De qué fallas»** (F26): el perfil agrupa los errores de los últimos 20 dictados por
+  regla. Hasta la taxonomía no se podía contestar.
+- **Repesca espaciada** (F27): una frase que fallaste vuelve al día siguiente, a los 3 y a
+  los 7. **Mezclada entre otras**, y el cliente no sabe cuáles son las de repaso — si lo
+  supiera, prestarías una atención que no prestas en un dictado real.
+- **60 segundos** (F28): ocho tarjetas de dos formas —la buena y la que escribiste tú—
+  hechas con tus propios errores. Sin audio, sin escribir, sin clave de API.
+- **Escritura libre** (F29): eliges tema, escribes 40-400 palabras y Claude corrige la
+  lengua. **El texto no se guarda en ningún sitio.** Es la única parte de la app que no
+  funciona sin clave, y cuando no la hay se dice **antes** de escribir.
+- **Textos marcados y propuesta del siguiente** (F35), **progreso en errores por 100
+  palabras con curva semanal** (F36), y **comparación contigo mismo** (F66) — que solo
+  habla cuando has ido mejor.
+
+### Añadido — identidad, dominio y datos
+
+- **Firebase Authentication** (F52). Alta, entrada, recuperación de contraseña y **baja de
+  cuenta**, que Google Play exige. Con esto desaparece la dependencia de `db1.bwai.cc`
+  —infraestructura de otra casa— y una consulta que comparaba contraseñas **en texto
+  plano**.
+- **`dictats.usecronos.com`**, el dominio definitivo, con certificado y renovación.
+- **El esquema del convenio de Cronos**: tablas y columnas en inglés, todo indexado por
+  `uid`, el correo **solo en `users`** (estaba en siete tablas), claves ajenas con
+  `ON DELETE CASCADE` y las fechas UTC guardadas con `Z`.
+- **Un tope diario** de llamadas al modelo, además del de 30/hora: con solo aquel, el techo
+  real de una persona eran 720 al día.
+- **Rotación de logs** (F15), acotada a Dictats para no cambiarle el comportamiento a las
+  otras tres apps de la misma máquina.
+
+### Corregido — y casi todo salió usando la app, no leyéndola
+
+- **El dictado se daba por completado sin haber sonado** (F68). Sin voz instalada, las
+  cinco frases pasaban en un suspiro y la pantalla decía «Dictat completat» al 100 %.
+- **Las palabras no escritas tapaban los errores** (F69): 18 fichas seguidas de «no s'ha
+  escrit» enterraban los cinco errores que sí se podían estudiar.
+- **El banco dictaba una palabra que no existe** (F70): «marzipà» por **massapà**. Estaba a
+  punto de entrar en una captura de Play.
+- **Una categoría enseñaba una regla que no era la de su error** (F71): a quien escribía
+  «sentre» por *centre* se le enseñaba la regla de la doble ese. **Era enseñar ortografía
+  equivocada**, que es justo lo que el producto promete no hacer.
+- **El perfil decía que tu problema principal era no haber escrito** (F72), y **la lista
+  decía «el millor amb 23 errors»** de un texto de 26 palabras (F74). No hiciste 23 faltas:
+  paraste.
+- **El gráfico del perfil lanzaba un error en cada carga** (F73): `height="auto"` es CSS, no
+  una longitud de SVG.
+
+### Verificado
+
+De **192 comprobaciones a 387** en `npm test`, más ocho suites que no caben ahí porque
+tocan datos, red o navegador. La migración del esquema se probó **contra una copia de la
+base de producción**, que es donde aparecieron sus tres trampas.
+
+Y el paquete de Android: reconstruido, firmado y **abierto en un Android sin la barra de
+Chrome**, con un alta de cuenta hecha desde dentro. La «trampa 2» del gameplan —que decía
+que eso no se podía comprobar antes de subir a Play— resultó ser comprobable.
+
+### Lo que sigue sin verificar, y conviene que conste
+
+**Ningún profesor de catalán ha leído las 22 reglas**, que se usan en tres pantallas y son
+la promesa del producto. **Ningún lector de pantalla** ha leído la app. Y **ningún móvil
+físico** la ha ejecutado: el emulador no dice nada del micrófono, de la voz catalana ni de
+la cámara.
+
 ## [1.3.0] — 2026-09-04 — v10…v14: la app se despliega, deja de mentir y anima
 
 Cinco ramas de trabajo entre el 31-08 y el 04-09. Lo que las une: la app pasó de estar
