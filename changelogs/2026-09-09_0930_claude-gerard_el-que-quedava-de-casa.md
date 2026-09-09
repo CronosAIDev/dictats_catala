@@ -50,3 +50,15 @@ Recollida de tot el que era meu i no depenia de ningú.
   la manera d'entrar, i això és una major.
 - **`ROADMAP.md`**: F15, F52, F76, F80 i F81 passen a fetes, i entren F78 (identitat, domini
   i esquema), F79 (l'AAB provat sense pujar-lo) i F77.
+
+### Corregido (continuació)
+
+- **Esborrar un text propi deixava els seus repassos** (F75). Els repassos apunten al text
+  amb `text_id` i **no desen la frase** —es torna a treure del banc cada vegada, perquè
+  editar un text no deixi repassos apuntant a alguna cosa que ja no hi és. La conseqüència
+  era que **esborrar-lo** deixava repassos que no es podien resoldre mai: la sessió se'ls
+  saltava bé, però es quedaven per sempre.
+
+  No hi ha clau aliena que ho faci sol perquè `text_id` també apunta al banc, que no és cap
+  taula. Es fa en esborrar el text i **dins de la mateixa transacció**: un text esborrat a
+  mitges seria pitjor que no esborrar-lo.

@@ -127,7 +127,33 @@ const espera = ms => new Promise(r => setTimeout(r, ms));
     comprova('amb el seu títol', true, perfil.history.some(h => h.text_title === 'Repàs'));
 
     bd.close();
-    console.log(falles === 0
+    // ── Esborrar un text propi s'endú els seus repassos (F75) ──
+  //
+  // Els repassos apunten al text amb `text_id` i **no desen la frase**: es torna
+  // a treure del banc cada vegada. Per això un text esborrat deixava repassos
+  // que no es podien resoldre mai — la sessió se'ls saltava bé, però es
+  // quedaven per sempre. No hi ha clau aliena que ho faci sol perquè `text_id`
+  // també apunta al banc, que no és cap taula.
+  console.log('\nEsborrar un text propi s\'endú els seus repassos:');
+  {
+    const meu = await post('/api/user-texts',
+      { title: 'Un text meu', text: 'Avui fa sol. || Demà plourà. || I demà passat, qui sap.' });
+    const tid = 'personal_' + meu.id;
+    await post('/api/correct', {
+      originalText: 'Avui fa sol. || Demà plourà. || I demà passat, qui sap.',
+      userText: 'Avui fa sòl. || Demà ploura. || I demà passat, qui sap.',
+      level: 'personal', textId: tid, textTitle: 'Un text meu', punctuationDictated: true,
+    });
+    const bd2 = new Database(BD);
+    const quants = () => bd2.prepare('SELECT count(*) c FROM phrase_reviews WHERE text_id = ?').get(tid).c;
+    comprova('el text fallat deixa repassos apuntats', true, quants() > 0);
+
+    await fetch(BASE + '/api/user-texts/' + meu.id, { method: 'DELETE', headers: caps });
+    comprova('en esborrar el text, no en queda cap', 0, quants());
+    bd2.close();
+  }
+
+  console.log(falles === 0
       ? '\nLes frases fallades tornen, i deixen de tornar quan te les saps\n'
       : `\n${falles} comprovacions fallen\n`);
     acaba(falles === 0 ? 0 : 1);
