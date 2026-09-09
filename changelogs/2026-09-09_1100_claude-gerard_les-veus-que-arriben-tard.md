@@ -29,3 +29,19 @@ rellotge corrent 1,3 s; un altre bloc, mentrestant, tornava a posar veus al dobl
 aquell rellotge s'acabava comprovava una cosa diferent de la que deia. Ara va l'últim i
 tanca ell el resum. Dos blocs que comparteixen estat global i temps no són independents
 encara que ho semblin.
+
+---
+
+## Verificat en un iPhone (09-09)
+
+En Gerard ha fet un dictat sencer a Safari d'iPhone: **sona, i amb la veu correcta.** iOS
+era la plataforma que no havia executat mai ningú i és on la síntesi de veu es comporta
+més diferent.
+
+⚠️ **El que aquesta prova no diu**: si l'espera de les veus feia falta. Es va provar amb
+l'arreglo ja desplegat, així que no sabem si abans hauria fallat. El comportament asíncron
+de `getVoices()` està documentat i l'espera no fa mal en cap cas, però **no s'ha vist el
+fallo**, només evitat.
+
+Segueix sense provar a iOS: la **càmera** —que va sortir negra per un permís del sistema
+(F82)— i la resta de pantalles.
