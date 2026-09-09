@@ -48,9 +48,9 @@
         <tr>
           <td><strong>Contrasenya</strong></td>
           <td>
-            Entrar. <strong>Dictats no en desa cap</strong>: s'entra amb el compte
-            que ja tens als serveis del mateix responsable, i l'app només comprova
-            que sigui correcta contra aquell sistema de comptes
+            Entrar. <strong>Dictats no en desa cap ni la veu mai</strong>: qui la comprova
+            és <strong>Firebase Authentication</strong>, de Google. L'app només rep, quan
+            has entrat, un identificador teu i el teu correu
           </td>
           <td>Execució del servei</td>
         </tr>
@@ -93,6 +93,14 @@
     </p>
 
     <h2>Qui més hi intervé</h2>
+    <p>
+      <strong>Google</strong> s'encarrega de l'accés. Qui comprova el teu correu i la teva
+      contrasenya és <strong>Firebase Authentication</strong>: allà viuen la contrasenya i
+      la verificació, i Dictats no les veu mai. Nosaltres només en rebem un identificador i
+      el teu correu. Si demanes canviar la contrasenya, el missatge també te l'envia Google.
+      Com tracta aquestes dades ho explica a
+      <a href="https://firebase.google.com/support/privacy" rel="noopener">firebase.google.com/support/privacy</a>.
+    </p>
     <p>
       La correcció de l'app té dues parts, i només una surt del servidor:
     </p>
@@ -142,9 +150,9 @@
     <h2>On viuen les dades</h2>
     <ul>
       <li>
-        El <strong>compte</strong> (correu i nom) viu en una base de dades de comptes
-        <strong>compartida amb els altres serveis del mateix responsable</strong>: si ja
-        en tens un, és el mateix. Dictats hi llegeix per comprovar qui ets, i prou.
+        El <strong>compte</strong> —el correu i la contrasenya— viu a <strong>Firebase
+        Authentication</strong>, de Google. Dictats en desa només el teu correu i un
+        identificador, per lligar-hi el teu progrés.
       </li>
       <li>El <strong>progrés</strong>, els errors i els teus textos, en una base de dades del servidor de Dictats.</li>
       <li>El servidor de Dictats és a la <strong>Unió Europea</strong> (Bèlgica).</li>
@@ -166,10 +174,14 @@
 
     <h2>Esborrar el compte</h2>
     <p>
-      Escriu a <a href="mailto:otc@trawlingweb.app">otc@trawlingweb.app</a> des del correu
-      del compte i s'esborra tot: el compte, els dictats, els errors i els teus textos.
-      Quan l'app tingui identitat pròpia hi haurà a més un botó dins de l'app i una pàgina
-      per demanar-ho sense iniciar sessió, tal com exigeix Google Play.
+      <strong>Des de l'app</strong>: al teu perfil hi ha «Esborrar el compte». Et demana la
+      contrasenya —és l'única cosa que no es pot desfer— i s'esborra tot: el teu compte de
+      Firebase, els dictats, els errors, els repassos i els teus textos.
+    </p>
+    <p>
+      <strong>Sense entrar-hi</strong>: escriu a
+      <a href="mailto:otc@trawlingweb.app">otc@trawlingweb.app</a> des del correu del compte
+      i es fa igual.
     </p>
 
     <h2>Els teus drets</h2>

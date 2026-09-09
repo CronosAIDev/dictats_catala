@@ -8,7 +8,7 @@ Aplicació Node.js/Express que permet als usuaris practicar dictats en català a
 
 ## Funcionalitats
 
-- Autenticació via MySQL (`BrandWaiUserProfile`) — mateixa BD que FeedScale
+- Identitat amb **Firebase Authentication**, el projecte compartit de tot Cronos
 - 3 nivells predefinits (Bàsic, Intermedi, Avançat) + nivell personal (textos propis)
 - Avís si el dispositiu no té veu catalana instal·lada
 - Mode editor (textarea) i mode paper (foto opcional), tant a escriptori com a mòbil
@@ -24,7 +24,7 @@ Aplicació Node.js/Express que permet als usuaris practicar dictats en català a
 ## Stack
 
 - **Backend**: Node.js + Express
-- **Auth**: MySQL `brandwaiapp` (BrandWaiUserProfile)
+- **Identitat**: Firebase Authentication (correu i contrasenya). El servidor comprova l'ID token amb `jose`; el client no carrega el SDK
 - **Progrés**: SQLite (`data/dictats.db`)
 - **IA**: Anthropic Claude API (`claude-opus-4-6`)
 - **Frontend**: Vanilla JS + HTML/CSS
@@ -56,10 +56,8 @@ dins l'original sigui exacta, que és tota la raó de ser de `src/lib/diff.js`.
 | `PORT` | Port del servidor (default: 3003) |
 | `ANTHROPIC_API_KEY` | Clau API d'Anthropic |
 | `SESSION_SECRET` | Secret per a sessions Express |
-| `MYSQL_HOST` | Host MySQL (brandwaiapp) |
-| `MYSQL_USER` | Usuari MySQL |
-| `MYSQL_PASSWORD` | Contrasenya MySQL |
-| `MYSQL_DATABASE` | Base de dades MySQL |
+| `FIREBASE_API_KEY` | Clau pública del client. **No és cap secret**: va al frontend per disseny i el que protegeix l'accés és la llista de dominis autoritzats |
+| `FIREBASE_PROJECT_ID` | `kairos-family-app` |
 | `DICTATS_DB_PATH` | Ruta del SQLite (per defecte `<repo>/data/dictats.db`) |
 | `DICTATS_MODEL` | Model de Claude (per defecte `claude-opus-4-6`) |
 
@@ -68,13 +66,14 @@ dins l'original sigui exacta, que és tota la raó de ser de `src/lib/diff.js`.
 ```
 src/
   index.js              # Express server
-  routes/auth.js        # Login/logout (MySQL)
+  routes/auth.js        # Alta, entrada, sortida i baixa de compte
   routes/dictats.js     # Textos, correcció, perfil
-  lib/auth.js           # Cerca usuari a BrandWaiUserProfile
+  lib/firebase.js       # Comprova l'ID token de Firebase (nomes projectId, cap secret)
   lib/diff.js           # Comparació determinista original/alumne
   lib/rang.js           # Punts i rangs (progressió acumulada)
   lib/db.js             # SQLite (user_texts, user_progress, user_errors)
-  lib/mysql.js          # Pool MySQL
+  lib/esquema.js        # L'esquema SQLite, segons el conveni de Cronos
+  lib/migracio.js       # El pas de l'esquema antic, i recuperar l'historial
   middleware/requireAuth.js
 data/
   texts.js              # 30 textos predefinits (10 per nivell)

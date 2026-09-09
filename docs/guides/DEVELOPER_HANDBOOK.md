@@ -4,7 +4,17 @@
 
 App web per practicar dictats en català amb correcció automàtica via Claude API. Els usuaris escolten el text per síntesi de veu, l'escriuen (o el fan en paper i pugen una foto), i Claude retorna la correcció amb errors classificats i una escala motivadora.
 
-Forma part de l'ecosistema Trawlingweb. Usa la mateixa autenticació que FeedScale Console (`BrandWaiUserProfile` a MySQL `brandwaiapp`).
+És un projecte de **Cronos**. Des del 08-09-2026 la identitat és **Firebase
+Authentication** —el projecte `kairos-family-app`, compartit per totes les apps de Cronos—
+i el progrés viu en SQLite indexat pel `uid`.
+
+**Ja no depèn de cap infraestructura de Trawlingweb.** Fins al 08-09 l'accés anava contra
+`BrandWaiUserProfile` (MySQL `brandwaiapp`, la mateixa base que FeedScale) i comparava
+contrasenyes en text pla. Aquella dependència s'ha retirat sencera: `mysql2` i `bcrypt`
+fora del `package.json`.
+
+Norma que ho ordena: [§35 d'`AI_CODE_INSTRUCTIONS.md`](https://github.com/CronosAIDev/wiki-cronos/blob/main/AI_CODE_INSTRUCTIONS.md)
+i el [conveni d'esquema](https://github.com/CronosAIDev/wiki-cronos/blob/main/docs/convenio_esquema.md).
 
 ## Stack Tecnològic
 
@@ -14,7 +24,7 @@ Forma part de l'ecosistema Trawlingweb. Usa la mateixa autenticació que FeedSca
 - **Progrés local**: SQLite via `better-sqlite3` (addon natiu — veure nota manteniment)
 - **IA**: `@anthropic-ai/sdk` — model `claude-opus-4-6`
 - **Sessions**: `express-session` + cookie httpOnly
-- **Seguretat**: `helmet`, `express-rate-limit` (trust proxy activat per Caddy)
+- **Seguretat**: `helmet`, `express-rate-limit` (trust proxy activat pel nginx de davant)
 - **Pujada fotos**: `multer` (memory storage, max 10MB)
 - **Frontend**: Vanilla JS, HTML/CSS, Web Speech API
 
@@ -43,17 +53,20 @@ npm start
 | `PORT` | Port del servidor | `3003` |
 | `ANTHROPIC_API_KEY` | Clau API Anthropic | `sk-ant-api03-...` |
 | `SESSION_SECRET` | Secret sessions | cadena llarga aleatòria |
-| `MYSQL_HOST` | Host MySQL | `db1.bwai.cc` |
-| `MYSQL_PORT` | Port MySQL | `3306` |
-| `MYSQL_USER` | Usuari MySQL | `dataagency` |
-| `MYSQL_PASSWORD` | Contrasenya MySQL | (credentials) |
-| `MYSQL_DATABASE` | Base de dades | `brandwaiapp` |
+| `FIREBASE_API_KEY` | Clau pública del client. **No és cap secret** | `AIza...` |
+| `FIREBASE_PROJECT_ID` | Projecte de Firebase | `kairos-family-app` |
+| `DICTATS_DB_PATH` | Ruta de la BD SQLite | `/var/dictats/data/dictats.db` |
 | `NODE_ENV` | Entorn | `production` |
+
+⚠️ **A producció, `SESSION_SECRET` i `FIREBASE_API_KEY` són obligatòries i el servidor es
+nega a arrencar sense elles.** Les dues fallaven en silenci: sense la primera les sessions
+es firmen amb el secret que hi ha escrit al repo, i sense la segona ningú pot entrar amb la
+pantalla veient-se perfecta.
 
 ## Arquitectura
 
 ```
-Browser → Caddy (dictation.generaive.io:443) → Express (localhost:3003)
+Browser → nginx (dictats.usecronos.com:443) → Express (localhost:3003)
                                                     ↓
                                         MySQL brandwaiapp (auth)
                                         SQLite data/dictats.db (progrés)
@@ -113,7 +126,14 @@ commits → push de la branch → merge `--no-ff` a `main` → push → deploy d
 - **Ruta a la VM**: `/var/dictats/app`
 - **Procés PM2**: `dictats-catala`
 - **Port**: `3003`
-- **Proxy**: nginx + certbot — `dictation.generaive.io` → `127.0.0.1:3003`
+- **Proxy**: nginx + certbot. **Dos dominis apunten a la mateixa app**:
+  - `dictats.usecronos.com` → `127.0.0.1:3003` — **el definitiu**, i el que va congelat
+    dins del paquet d'Android
+  - `dictation.generaive.io` → `127.0.0.1:3003` — el d'abans, encara servint. Què se'n fa
+    està obert a la [#20](https://github.com/CronosAIDev/wiki-cronos/issues/20)
+- **Logs**: `logrotate` a `/etc/logrotate.d/dictats`, diari i 14 còpies, **acotat a
+  `/var/dictats/logs`**. A la VM hi ha tres apps més sota el mateix PM2 i el mòdul
+  `pm2-logrotate` els canviaria el comportament a totes
 
 Compartida amb `kairos_app` (3010) i `heart_monitor`/`trabaler` (3020). Node 20 a
 tota la VM. Abans del 2026-07-29 vivia a `mochi-vm` amb Caddy; veure el
