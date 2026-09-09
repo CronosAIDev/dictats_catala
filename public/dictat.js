@@ -21,6 +21,10 @@
   var PAUSA_MAXIMA_MS = 60000;
   var ALLARGA_S = 10;
   var VELOCITAT_PER_DEFECTE = 0.75;
+  // Quant s'espera que el navegador carregui les veus abans de dir que no en
+  // té cap. Un segon: prou per a Safari i Chrome, i prou poc perquè, si de
+  // veritat no n'hi ha, l'avís surti de seguida.
+  var ESPERA_VEUS_MS = 1000;
 
   // El banc té 69 signes interns que la veu no diu mai i que, tot i així,
   // puntuaven. O es dicten, o no compten.
@@ -48,6 +52,41 @@
   /** Si el navegador té ALGUNA veu instal·lada, sigui de la llengua que sigui. */
   function hiHaVeu() {
     return !!(global.speechSynthesis && global.speechSynthesis.getVoices().length);
+  }
+
+  /**
+   * Espera que el navegador carregui les veus, si encara no ho ha fet.
+   *
+   * `getVoices()` **torna una llista buida fins que el navegador les té
+   * carregades**, i això no passa alhora a tot arreu: a Safari d'iPhone i a
+   * Chrome acabat d'obrir arriben més tard, amb l'esdeveniment
+   * `voiceschanged`. Preguntar-ho de cop, com es feia, vol dir que un aparell
+   * que **sí** que té veu digui que no en té i caigui a l'estat `sense-veu`:
+   * l'avís més contundent de l'app, i seria fals.
+   *
+   * S'espera com a molt un segon. Si passa i segueix buida, és que de veritat
+   * no n'hi ha —el cas de F68, un Linux sense síntesi— i llavors sí que es diu.
+   *
+   * @param {function} quan  es crida amb `true` si al final n'hi ha alguna
+   */
+  function quanHiHagiVeu(quan) {
+    if (!global.speechSynthesis) return quan(false);
+    if (hiHaVeu()) return quan(true);
+
+    var resolt = false;
+    var acaba = function () {
+      if (resolt) return;
+      resolt = true;
+      clearTimeout(rellotge);
+      if (global.speechSynthesis.removeEventListener) {
+        global.speechSynthesis.removeEventListener('voiceschanged', acaba);
+      }
+      quan(hiHaVeu());
+    };
+    var rellotge = setTimeout(acaba, ESPERA_VEUS_MS);
+    if (global.speechSynthesis.addEventListener) {
+      global.speechSynthesis.addEventListener('voiceschanged', acaba);
+    }
   }
 
   function veusCatalanes() {
@@ -122,7 +161,18 @@
   MotorDictat.prototype._parla = function (text, quanAcabi) {
     var motor = this;
     var torn = ++this.torn;
-    if (!global.speechSynthesis || !hiHaVeu()) { this._sensVeu(); return; }
+    if (!global.speechSynthesis) { this._sensVeu(); return; }
+    // No es pregunta de cop: hi ha navegadors que encara no tenen les veus
+    // carregades quan es prem «Iniciar dictat». Veure `quanHiHagiVeu`.
+    if (!hiHaVeu()) {
+      quanHiHagiVeu(function (nhiHa) {
+        if (torn !== motor.torn) return;          // ja s'ha aturat o saltat
+        if (!nhiHa) return motor._sensVeu();
+        motor.torn--;                             // que el torn no compti dues vegades
+        motor._parla(text, quanAcabi);
+      });
+      return;
+    }
     // `pause()` marca el sintetitzador sencer, no una locució, i `cancel()` NO
     // el desmarca. Sense aquest `resume()`, qualsevol dictat que s'hagi pausat
     // un cop es queda mut per sempre: la veu no sona, `onend` no arriba mai i
