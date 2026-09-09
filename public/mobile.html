@@ -88,6 +88,7 @@
     .mobile-result-sub { text-align:center; font-size:1rem; color:var(--text-muted); margin-bottom:8px; }
     .mobile-result-stats { text-align:center; font-size:.875rem; color:var(--text-muted); margin-bottom:20px; }
   </style>
+  <script src="/foto.js" defer></script>
 </head>
 <body>
   <div class="mobile-shell">
@@ -190,6 +191,7 @@
               </label>
               <input type="file" id="m-photo-input" accept="image/*" capture="environment" style="display:none">
               <img id="m-photo-preview" style="display:none;width:100%;border-radius:10px;margin-top:12px;border:1px solid var(--border)">
+              <p id="m-photo-avis" class="alert alert-error" style="display:none;margin-top:12px" role="alert"></p>
               <div style="display:flex;flex-direction:column;gap:10px;margin-top:14px">
                 <button class="big-btn big-btn-success" id="m-btn-correct-photo" disabled>Corregir amb la foto</button>
                 <button class="big-btn big-btn-ghost" id="m-btn-skip-photo">Ometre (sense correcció)</button>
@@ -610,15 +612,28 @@
       $('m-btn-correct').disabled = $('m-user-text').value.trim().length < 3;
     }
 
-    function onPhoto(e) {
+    async function onPhoto(e) {
       const file = e.target.files[0];
       if (!file) return;
       state.photoFile = file;
       $('m-photo-label').textContent = file.name;
-      $('m-btn-correct-photo').disabled = false;
       const reader = new FileReader();
       reader.onload = ev => { $('m-photo-preview').src = ev.target.result; $('m-photo-preview').style.display = ''; };
       reader.readAsDataURL(file);
+
+      // Una foto negra no es corregeix: costaria una crida al model i tornaria
+      // una transcripció inventada que se li ensenyaria a la persona **com si
+      // fossin faltes seves**.
+      const avis = $('m-photo-avis');
+      const q = window.Foto ? await window.Foto.mira(file) : { ok: true };
+      if (!q.ok) {
+        avis.textContent = window.Foto.QUE_FER;
+        avis.style.display = '';
+        $('m-btn-correct-photo').disabled = true;
+        return;
+      }
+      avis.style.display = 'none';
+      $('m-btn-correct-photo').disabled = false;
     }
 
     // ── Correcció ───────────────────────────────────────

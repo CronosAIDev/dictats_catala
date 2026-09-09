@@ -22,6 +22,7 @@
   <script src="/anim.js" defer></script>
   <script src="/report.js" defer></script>
   <script src="/pwa.js" defer></script>
+  <script src="/foto.js" defer></script>
 </head>
 <body>
   <div class="app-shell">
@@ -193,6 +194,7 @@
                   <span id="photo-label-text">Pujar foto del paper (opcional)</span>
                 </label>
                 <input type="file" id="photo-input" accept="image/*" capture="environment" style="display:none">
+                <p id="photo-avis" class="alert alert-error" style="display:none;margin-top:12px" role="alert"></p>
                 <div id="photo-preview-wrap" style="display:none;margin-top:12px">
                   <img id="photo-preview" style="max-width:100%;max-height:300px;border-radius:8px;border:1px solid var(--border)">
                   <button class="btn btn-ghost btn-sm" id="btn-remove-photo" style="margin-top:8px">Eliminar foto</button>
